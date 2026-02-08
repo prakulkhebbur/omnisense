@@ -2,25 +2,25 @@ import asyncio
 import sounddevice as sd
 from call_session import CallSession
 
+# Whisper requires exactly 16000Hz
 SAMPLE_RATE = 16000
-BLOCK_SIZE = 4000 # ~250ms per chunk for low latency
+BLOCK_SIZE = 4000 # ~250ms
 
 async def test_call(call_id, duration=30):
-    # Using 'small.en' for high accuracy on CPU
-    call = CallSession(call_id, model_size="small.en")
+    call = CallSession(call_id, model_size="distil-large-v3")
     await call.start()
 
     loop = asyncio.get_running_loop()
 
     def callback(indata, frames, time, status):
         if status:
-            print(status)
-        # Offload audio processing to the queue
+            print(f"Error: {status}")
+        
         loop.call_soon_threadsafe(
             lambda: asyncio.create_task(call.send_audio(bytes(indata)))
         )
 
-    print("--- Recording Started (Speak now) ---")
+    print("--- Recording with distil-large-v3 (Speak now) ---")
     with sd.RawInputStream(
         samplerate=SAMPLE_RATE,
         blocksize=BLOCK_SIZE,
@@ -33,4 +33,8 @@ async def test_call(call_id, duration=30):
     await call.end()
 
 if __name__ == "__main__":
-    asyncio.run(test_call("CALL_WHISPER_001"))
+    # Disable the symlink warning if it appears
+    import os
+    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+    
+    asyncio.run(test_call("DISTIL_V3_TEST"))
