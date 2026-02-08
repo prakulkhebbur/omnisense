@@ -1,0 +1,109 @@
+omnisense/
+├── README.md
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
+│
+├── src/
+│   ├── __init__.py
+│   │
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── main.py                 # FastAPI app entry point
+│   │   ├── routes/
+│   │   │   ├── __init__.py
+│   │   │   ├── calls.py            # Call endpoints
+│   │   │   ├── insights.py         # Analytics endpoints
+│   │   │   └── websocket.py        # Real-time updates
+│   │   └── middleware/
+│   │       ├── __init__.py
+│   │       └── auth.py
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── config.py               # App configuration
+│   │   ├── logging.py              # Logging setup
+│   │   └── exceptions.py           # Custom exceptions
+│   │
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── call_handler.py         # Autonomous call handling agent
+│   │   ├── conversation.py         # Conversation flow logic
+│   │   └── prompts.py              # AI prompts/templates
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── speech_to_text.py      # STT integration (Whisper/Google)
+│   │   ├── text_to_speech.py      # TTS for AI responses
+│   │   ├── nlp_analyzer.py        # Emergency classification & extraction
+│   │   ├── pattern_detector.py    # Cross-call pattern analysis
+│   │   ├── priority_ranker.py     # Severity-based ranking
+│   │   └── resource_matcher.py    # Match calls to nearby resources
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── call.py                # Call data model
+│   │   ├── emergency.py           # Emergency classification model
+│   │   ├── resource.py            # Emergency resource model
+│   │   └── insight.py             # Analytics insight model
+│   │
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── connection.py          # DB connection
+│   │   ├── repositories/
+│   │   │   ├── __init__.py
+│   │   │   ├── call_repo.py
+│   │   │   └── resource_repo.py
+│   │   └── migrations/
+│   │       └── __init__.py
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       ├── validators.py          # Input validation
+│       ├── helpers.py             # Utility functions
+│       └── constants.py           # App constants
+│
+├── dashboard/
+│   ├── app.py                     # Streamlit/Gradio dashboard
+│   ├── components/
+│   │   ├── __init__.py
+│   │   ├── call_list.py           # Active calls display
+│   │   ├── priority_queue.py      # Priority-ranked queue
+│   │   ├── pattern_alerts.py      # Pattern detection alerts
+│   │   └── resource_map.py        # Geographic resource view
+│   └── static/
+│       ├── css/
+│       └── js/
+│
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py                # Pytest fixtures
+│   ├── unit/
+│   │   ├── test_nlp_analyzer.py
+│   │   ├── test_priority_ranker.py
+│   │   └── test_pattern_detector.py
+│   ├── integration/
+│   │   ├── test_api.py
+│   │   └── test_call_flow.py
+│   └── fixtures/
+│       └── sample_calls.json
+│
+├── scripts/
+│   ├── seed_data.py               # Sample data generation
+│   ├── simulate_calls.py          # Call simulation for demo
+│   └── deploy.sh
+│
+├── data/
+│   ├── emergency_protocols.json   # Emergency response protocols
+│   ├── hospitals.json             # Hospital/resource locations
+│   └── sample_transcripts/
+│
+├── notebooks/
+│   ├── eda.ipynb                  # Exploratory analysis
+│   └── model_testing.ipynb        # ML model experiments
+│
+└── docs/
+    ├── api.md                     # API documentation
+    ├── architecture.md            # System architecture
+    └── deployment.md              # Deployment guide
