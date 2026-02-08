@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OmniSense Dashboard WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background: #2d5016; }
+        .disconnected { background: #501616; }
+        .call-card {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .critical { border-left-color: #ff0000; }
+        .high { border-left-color: #ff6600; }
+        .medium { border-left-color: #ffcc00; }
+        .low { border-left-color: #00cc00; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 OmniSense Dashboard - WebSocket Test</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-active">0</div>
+                <div>Active Calls</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-ai">0</div>
+                <div>AI Handled</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-queued">0</div>
+                <div>In Queue</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-completed">0</div>
+                <div>Completed</div>
+            </div>
+        </div>
+        
+        <h2>📞 Active Calls</h2>
+        <div id="active-calls"></div>
+        
+        <h2>📋 Priority Queue</h2>
+        <div id="queue"></div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/ws/dashboard');
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            document.getElementById('status').className = 'status connected';
+            document.getElementById('status').textContent = '✅ Connected';
+        };
+        
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+            document.getElementById('status').className = 'status disconnected';
+            document.getElementById('status').textContent = '❌ Disconnected';
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Received update:', data);
+            updateDashboard(data);
+        };
+        
+        function updateDashboard(data) {
+            // Update stats
+            document.getElementById('stat-active').textContent = data.stats.total_active;
+            document.getElementById('stat-ai').textContent = data.stats.ai_handled;
+            document.getElementById('stat-queued').textContent = data.stats.queued;
+            document.getElementById('stat-completed').textContent = data.stats.completed_today;
+            
+            // Update active calls
+            const activeCalls = document.getElementById('active-calls');
+            if (data.active_calls.length === 0) {
+                activeCalls.innerHTML = '<p>No active calls</p>';
+            } else {
+                activeCalls.innerHTML = data.active_calls.map(call => `
+                    <div class="call-card ${call.severity_level}">
+                        <strong>Call #${call.call_number}</strong> - ${call.status}
+                        <br>Phone: ${call.caller.phone_number}
+                        <br>Emergency: ${call.emergency_type}
+                        <br>Severity: ${call.severity_score}/100
+                        <br>Assigned to: ${call.assigned_to || 'None'}
+                    </div>
+                `).join('');
+            }
+            
+            // Update queue
+            const queue = document.getElementById('queue');
+            if (data.queue.length === 0) {
+                queue.innerHTML = '<p>Queue is empty</p>';
+            } else {
+                queue.innerHTML = data.queue.map((call, index) => `
+                    <div class="call-card ${call.severity_level}">
+                        <strong>#${index + 1} - Call #${call.call_number}</strong>
+                        <br>Emergency: ${call.emergency_type}
+                        <br>Severity: ${call.severity_score}/100
+                        <br>Location: ${call.location?.address || 'Unknown'}
+                    </div>
+                `).join('');
+            }
+        }
+    </script>
+</body>
+</html>
