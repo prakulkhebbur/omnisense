@@ -23,6 +23,10 @@ manager = ConnectionManager()
 orchestrator = CallOrchestrator()
 orchestrator.set_broadcast_function(manager.broadcast_dashboard)
 
+# --- IMPORTANT FIX: Link the orchestrator to your external routes ---
+from src.api.routes import calls
+calls.orchestrator = orchestrator
+
 # --- PAGE ROUTES ---
 @app.get("/")
 async def get_dashboard(): return FileResponse("static/index.html")

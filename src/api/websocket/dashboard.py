@@ -1,4 +1,5 @@
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from src.core.orchestrator import CallOrchestrator
 from src.api.websocket.manager import ConnectionManager
 import asyncio
@@ -32,7 +33,7 @@ async def dashboard_endpoint(
                 "queued": len(orchestrator.call_queue)
             }
         }
-        await websocket.send_json(initial_state)
+        await websocket.send_json(jsonable_encoder(initial_state))
 
         # 2. Keep connection alive
         while True:

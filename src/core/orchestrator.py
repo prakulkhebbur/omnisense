@@ -25,21 +25,24 @@ class CallOrchestrator:
         self.broadcast_func = broadcast_func
 
     async def _broadcast_update(self):
-        # --- FIX 1: DASHBOARD (Convert Queue IDs to Objects) ---
-        queue_objects = []
-        for cid in self.call_queue:
-            if cid in self.active_calls:
-                queue_objects.append(self.active_calls[cid].dict())
+        try:
+            queue_objects = []
+            for cid in self.call_queue:
+                if cid in self.active_calls:
+                    # Use dict() safely
+                    queue_objects.append(self.active_calls[cid].dict())
 
-        # Send to Dashboard
-        state = {
-            "active_calls": [c.dict() for c in self.active_calls.values()],
-            "queue": queue_objects, # <--- Fix: Sends Objects, not Strings
-            "operators": {op_id: op['current_call'] for op_id, op in self.operators.items()},
-            "stats": {"total_active": len(self.active_calls), "queued": len(self.call_queue)}
-        }
-        if self.broadcast_func:
-            await self.broadcast_func(state)
+            state = {
+                "active_calls": [c.dict() for c in self.active_calls.values()],
+                "queue": queue_objects,
+                "operators": {op_id: op['current_call'] for op_id, op in self.operators.items()},
+                "stats": {"total_active": len(self.active_calls), "queued": len(self.call_queue)}
+            }
+            
+            if self.broadcast_func:
+                await self.broadcast_func(state)
+        except Exception as e:
+            print(f"❌ Broadcast Failed: {e}")
 
         # --- FIX 2: OPERATOR (Send Waiting List) ---
         ai_calls = []
