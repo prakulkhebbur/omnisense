@@ -31,6 +31,12 @@ async def lifespan(app: FastAPI):
     print("🚀 OmniSense API Server Starting...")
     print("📡 WebSocket Server Ready")
     print("🎯 Orchestrator Initialized")
+
+    from src.stt.stt_whisper import StreamingSTT
+    print("⚙️  Pre-initializing AI Model...")
+    # This triggers the global load immediately
+    StreamingSTT(model_size="distil-small.en")
+
     yield
     # Shutdown
     print("🛑 OmniSense API Server Shutting Down...")
