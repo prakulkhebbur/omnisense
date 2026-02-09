@@ -73,6 +73,9 @@ async def ws_operator(websocket: WebSocket, operator_id: str):
                             call_id = data.get("call_id")
                             print(f"👨‍💼 Operator {operator_id} requesting pickup of {call_id}")
                             await orchestrator.force_assign_operator(call_id, operator_id)
+                        elif data.get("type") == "complete_call":
+                            print(f"✅ Operator {operator_id} completed current call")
+                            await orchestrator.complete_call(operator_id)
                     except Exception as e:
                         print(f"Command Error: {e}")
                         
