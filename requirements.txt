@@ -28,8 +28,25 @@ aiortc>=1.6.0            # WebRTC for Python
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.6
+# Audio capture and processing
+pyaudio>=0.2.13
+numpy>=1.24.0
+webrtcvad>=2.0.10
+sounddevice>=0.4.9  # alternative audio library if needed
+wave
 
+# Transcription engines
+faster-whisper>=0.6.0
+openai-whisper>=20230314
 
-numpy
-sounddevice
-faster_whisper
+# Speech recognition
+SpeechRecognition>=3.10.0
+pydub>=0.25.1  # optional, useful for audio preprocessing
+
+# Machine learning backend
+torch>=2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu  # CPU version
+# For GPU, install torch with the correct CUDA version:
+# torch>=2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+
+# Utilities
+tqdm>=4.66.1  # optional, progress bars for long transcriptions

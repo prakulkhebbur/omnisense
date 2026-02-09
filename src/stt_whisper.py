@@ -4,16 +4,16 @@ from faster_whisper import WhisperModel
 from datetime import datetime, timezone
 
 class StreamingSTT:
-    def __init__(self, model_size="small.en", device="cpu", compute_type="int8"):
-        # The VAD filter is crucial for accuracy as it ignores background noise
+    def __init__(self, model_size="distil-large-v3", device="cpu", compute_type="int8"):
+        # distil-large-v3 is 6-9x faster than the original large-v3
         self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
         self.queue = asyncio.Queue()
         self.running = True
         self.sample_rate = 16000
+        self.prev_text = "" # Stores context for better accuracy
 
     async def push_audio(self, audio_bytes):
         if self.running:
-            # Whisper requires float32 normalized between -1 and 1
             audio_data = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
             await self.queue.put(audio_data)
 
@@ -29,19 +29,28 @@ class StreamingSTT:
             
             audio_buffer.append(chunk)
             
-            # Process every 2-3 seconds of audio to maintain context and accuracy
-            if len(audio_buffer) >= 8: 
+            # Processing 3 seconds of audio (12 chunks of 250ms) ensures high accuracy
+            if len(audio_buffer) >= 12: 
                 full_audio = np.concatenate(audio_buffer)
                 
-                # vad_filter=True prevents the model from hallucinating during silence
-                segments, _ = self.model.transcribe(full_audio, beam_size=5, vad_filter=True)
+                # vad_filter=True ignores background noise
+                # initial_prompt uses previous text to help the model understand current context
+                segments, _ = self.model.transcribe(
+                    full_audio, 
+                    beam_size=5, 
+                    vad_filter=True,
+                    initial_prompt=self.prev_text[-200:] 
+                )
                 
                 for segment in segments:
                     if segment.text.strip():
+                        current_text = segment.text.strip()
+                        self.prev_text += " " + current_text
                         yield {
-                            "text": segment.text.strip(),
+                            "text": current_text,
                             "final": True,
                             "time": datetime.now(timezone.utc).isoformat()
                         }
-                # Keep the last second of audio to provide context for the next chunk
+                
+                # Keep the last 1 second for overlap to ensure words aren't cut in half
                 audio_buffer = audio_buffer[-4:]
