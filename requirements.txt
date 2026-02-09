@@ -1,52 +1,74 @@
-# Core Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-websockets==12.0
-pydantic==2.5.0
+# Core API & Server
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
 
-# Frontend
-# streamlit==1.28.0
-# plotly==5.18.0
+# Real-time Communication
+websockets>=12.0  # Required for sim.py client and server protocols
 
-# # Database (Local)
-# sqlalchemy==2.0.23
+# Audio Processing & AI (Server-Side)
+faster-whisper>=0.10.0  # The core STT engine used in stt_whisper.py
+numpy>=1.24.0           # Required for audio buffer manipulation
 
-# Speech Processing (FREE)
-# openai-whisper==20231117  # Local STT (FREE)
-# gtts==2.4.0              # Google TTS (FREE)
-# pydub==0.25.1            # Audio processing
-# soundfile==0.12.1        # Audio I/O
+# Utilities & Simulation
+requests>=2.31.0        # For API calls (LLM integration/testing)
+colorama>=0.4.6         # Used in scripts/sim.py for colored output
 
-# AI Agent (FREE options)
-# Option 1: Use Ollama locally (FREE)
-# Option 2: Use OpenAI GPT-4o-mini (has free tier)
-requests==2.31.0
 
-# WebRTC (for browser calls - FREE)
-aiortc>=1.6.0            # WebRTC for Python
+# # Core Framework
+# fastapi==0.104.1
+# uvicorn[standard]==0.24.0
+# websockets==12.0
+# pydantic==2.5.0
 
-# Utilities
-python-dotenv==1.0.0
-python-multipart==0.0.6
-# Audio capture and processing
-pyaudio>=0.2.13
-numpy>=1.24.0
-webrtcvad>=2.0.10
-sounddevice>=0.4.9  # alternative audio library if needed
-wave
+# # Frontend
+# # streamlit==1.28.0
+# # plotly==5.18.0
 
-# Transcription engines
-faster-whisper>=0.6.0
-openai-whisper>=20230314
+# # # Database (Local)
+# # sqlalchemy==2.0.23
 
-# Speech recognition
-SpeechRecognition>=3.10.0
-pydub>=0.25.1  # optional, useful for audio preprocessing
+# # Speech Processing (FREE)
+# # openai-whisper==20231117  # Local STT (FREE)
+# # gtts==2.4.0              # Google TTS (FREE)
+# # pydub==0.25.1            # Audio processing
+# # soundfile==0.12.1        # Audio I/O
 
-# Machine learning backend
-torch>=2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu  # CPU version
-# For GPU, install torch with the correct CUDA version:
-# torch>=2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+# # AI Agent (FREE options)
+# # Option 1: Use Ollama locally (FREE)
+# # Option 2: Use OpenAI GPT-4o-mini (has free tier)
+# requests==2.31.0
 
-# Utilities
-tqdm>=4.66.1  # optional, progress bars for long transcriptions
+# # WebRTC (for browser calls - FREE)
+# aiortc>=1.6.0            # WebRTC for Python
+
+# # Utilities
+# python-dotenv==1.0.0
+# python-multipart==0.0.6
+
+
+# # vasu
+# # Audio capture and processing
+# pyaudio>=0.2.13
+# numpy>=1.24.0
+# webrtcvad>=2.0.10
+# sounddevice>=0.4.9  # alternative audio library if needed
+# wave
+
+# # Transcription engines
+# faster-whisper>=0.6.0
+# openai-whisper>=20230314
+
+# # Speech recognition
+# SpeechRecognition>=3.10.0
+# pydub>=0.25.1  # optional, useful for audio preprocessing
+
+# # Machine learning backend
+# torch>=2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu  # CPU version
+# # For GPU, install torch with the correct CUDA version:
+# # torch>=2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+
+# # Utilities
+# tqdm>=4.66.1  # optional, progress bars for long transcriptions
