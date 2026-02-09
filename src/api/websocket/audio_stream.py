@@ -77,7 +77,7 @@ async def audio_stream_endpoint(
                             await websocket.send_json(
                                 {
                                     "type": "call_queued",
-                                    "message": "You are in the priority queue...",
+                                    "message": "You are in the priority queue. Please stay on the line and an operator will assist you as soon as possible.",
                                 }
                             )
                         
