@@ -12,7 +12,8 @@ setInterval(updateClock, 1000);
 updateClock();
 
 // --- WEBSOCKET CONNECTION ---
-const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard`);
+const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/dashboard`);
 
 ws.onopen = () => {
     console.log("✅ Connected to OmniSense Backend");
@@ -26,8 +27,8 @@ ws.onmessage = (event) => {
 // --- RENDER LOGIC ---
 function renderDashboard(data) {
     // 1. Update Header Stats
-    const activeCount = data.stats.total_active || 0;
-    const queuedCount = data.stats.queued || 0;
+    const activeCount = data.stats?.total_active || 0;
+    const queuedCount = data.stats?.queued || 0;
     
     document.querySelector('.stat-box.active .stat-number').innerText = activeCount;
     document.querySelector('.stat-box.pending .stat-number').innerText = queuedCount;
@@ -36,15 +37,20 @@ function renderDashboard(data) {
     const cardsContainer = document.querySelector('.cards-grid');
     cardsContainer.innerHTML = ''; // Clear existing cards
 
-    if (data.queue.length === 0) {
+    if (!data.queue || data.queue.length === 0) {
         cardsContainer.innerHTML = '<h3 style="color:white; opacity:0.5; padding:20px;">No critical calls in queue.</h3>';
     }
 
-    data.queue.forEach((call, index) => {
+    (data.queue || []).forEach((call, index) => {
         const rank = index + 1;
         const severityClass = getSeverityClass(call.severity_score);
         const iconClass = getIconClass(call.emergency_type);
         const deptName = getDeptName(call.emergency_type);
+        const transcriptEntries = Array.isArray(call.transcript) ? call.transcript : [];
+        const latestTranscript = transcriptEntries.length
+            ? transcriptEntries[transcriptEntries.length - 1]?.text
+            : null;
+        const summaryText = latestTranscript || "No details available.";
         
         const html = `
           <div class="card" style="border-left: 5px solid ${severityClass}">
@@ -58,7 +64,7 @@ function renderDashboard(data) {
                 <span class="sub">PROBLEM</span>
                 <h2>${formatType(call.emergency_type)}</h2>
                 <span class="sub">SEVERITY SCORE: ${call.severity_score}/100</span>
-                <p>${call.transcript[call.transcript.length-1]?.text || "No details available."}</p>
+                <p>${summaryText}</p>
               </div>
             </div>
             <div class="card-bottom">
@@ -84,7 +90,7 @@ function renderDashboard(data) {
     let colDept = '<h3>DEPARTMENT</h3>';
     let colStatus = '<h3>STATUS</h3>';
 
-    data.active_calls.slice(0, 5).forEach(call => {
+    (data.active_calls || []).slice(0, 5).forEach(call => {
         colPriority += `<p>${call.severity_level.toUpperCase()}</p>`;
         colDept += `<p>${getDeptName(call.emergency_type).toUpperCase()}</p>`;
         colStatus += `<p>${call.status}</p>`;

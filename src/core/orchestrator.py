@@ -225,8 +225,9 @@ class CallOrchestrator:
         await self._broadcast_update()
 
     def _sort_queue(self):
+        self.call_queue = [cid for cid in self.call_queue if cid in self.active_calls]
         self.call_queue.sort(
-            key=lambda cid: self.active_calls[cid].severity_score if cid in self.active_calls else 0, 
+            key=lambda cid: self.active_calls[cid].severity_score,
             reverse=True
         )
 
