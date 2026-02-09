@@ -2,6 +2,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .manager import ConnectionManager
 from src.core.orchestrator import CallOrchestrator
 from src.stt.stt_whisper import StreamingSTT
+from src.models.enums import CallStatus
 import asyncio
 import re
 
@@ -60,6 +61,10 @@ async def audio_stream_endpoint(
                     
                     try:
                         await websocket.send_json({"type": "transcription", "text": text})
+
+                        call = orchestrator.active_calls.get(call_id)
+                        if call and call.status == CallStatus.OPERATOR_HANDLING:
+                            continue
 
                         # Get AI Response
                         ai_response = await orchestrator.handle_caller_message(call_id, text)

@@ -126,6 +126,8 @@ class CallOrchestrator:
         call = self.active_calls.get(call_id)
         if not call:
             return "Call not found"
+        if call.status != CallStatus.AI_HANDLING:
+            return ""
         
         # AI processes message
         ai_response = await self.ai_agent.handle_caller_message(call, caller_text)
