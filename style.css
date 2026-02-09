@@ -7,7 +7,7 @@
 }
 
 body { 
-    background-color: #1b1d38; 
+    background-color: #191c34; 
     color: white; 
     padding: 30px;
     min-height: 100vh;
@@ -72,10 +72,11 @@ body {
 
 .stat-box.active {
     background-color: #59cfd4; /* Green */
+    
 }
 
 .stat-box.pending {
-    background-color: #f44336; /* Red */
+    background-color: #e76379; /* Red */
 }
 
 .stat-label {
@@ -93,7 +94,7 @@ body {
 
 /* CLOCK */
 .clock { 
-    background: #e4f181; 
+    background: #ffffff; 
     color: black; 
     padding: 15px 25px; 
     border-radius: 5px; 
@@ -117,10 +118,12 @@ body {
 
 /* CARD STYLES */
 .card { 
-    background: #4b5065; 
+    background: #2b3152; 
     border-radius: 20px; 
+    border-left: 3px solid #c12525;
     padding: 25px; 
     position: relative; 
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .badge { 
@@ -147,7 +150,7 @@ body {
     text-align: right; 
 }
 
-.dept-name { font-weight: bold; margin-right: 10px; }
+.dept-name { font-weight: bold; margin-right: 20px; }
 .dept-name span { display: block; font-size: 10px; font-weight: normal; }
 
 .icon-blue { color: #3b5998; font-size: 24px; }
@@ -228,3 +231,13 @@ body {
 .rotate {
     transform: rotate(90deg);
 }
+
+#icons {
+  font-size: 25px;
+}
+
+#police {
+  font-size: 25px;
+}
+
+
