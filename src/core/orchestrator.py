@@ -171,19 +171,17 @@ class CallOrchestrator:
     async def _process_queue_once(self):
         if not self.call_queue: return
         self._sort_queue()
-        
-        for call_id in list(self.call_queue):
-            call = self.active_calls.get(call_id)
-            if not call: 
-                self.call_queue.remove(call_id)
-                continue
 
-            op_id = await self._find_available_operator(call)
-            if op_id:
-                await self._assign_call(call.id, op_id)
-                self.call_queue.remove(call_id)
-            else:
-                break
+        filtered_queue = []
+        for call_id in self.call_queue:
+            call = self.active_calls.get(call_id)
+            if not call:
+                continue
+            if call.assigned_to != "AI_AGENT":
+                continue
+            filtered_queue.append(call_id)
+
+        self.call_queue = filtered_queue
         await self._broadcast_update()
 
     async def _find_available_operator(self, call: Call) -> Optional[str]:
