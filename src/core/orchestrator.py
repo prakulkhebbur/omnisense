@@ -7,6 +7,8 @@ from src.models.enums import CallStatus
 from src.core.queue_manager import QueueManager
 from src.agents.call_agent import AICallAgent
 from src.ranking.priority_ranker import PriorityRanker
+# NEW: Import the PatternDetector service
+from src.services.pattern_detector import PatternDetector
 
 class CallOrchestrator:
     """
@@ -31,6 +33,9 @@ class CallOrchestrator:
         
         # Priority ranker
         self.ranker = PriorityRanker()
+
+        # NEW: Initialize Pattern Detector
+        self.pattern_detector = PatternDetector()
         
         # Call counter for display numbers
         self.call_counter = 0
@@ -200,12 +205,17 @@ class CallOrchestrator:
             "queued": len(queued),
             "completed_today": len([c for c in self.active_calls.values() if c.status == CallStatus.COMPLETED])
         }
+
+        # NEW: Detect widespread patterns/alerts
+        all_calls_list = list(self.active_calls.values())
+        system_alerts = self.pattern_detector.detect_patterns(all_calls_list)
         
         return {
             "active_calls": active,
             "queue": queued,
             "operators": self.operators,
-            "stats": stats
+            "stats": stats,
+            "alerts": system_alerts  # NEW: Include alerts in state
         }
     
     async def _broadcast_state(self):

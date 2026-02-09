@@ -5,17 +5,17 @@ websockets==12.0
 pydantic==2.5.0
 
 # Frontend
-streamlit==1.28.0
-plotly==5.18.0
+# streamlit==1.28.0
+# plotly==5.18.0
 
-# Database (Local)
-sqlalchemy==2.0.23
+# # Database (Local)
+# sqlalchemy==2.0.23
 
 # Speech Processing (FREE)
-openai-whisper==20231117  # Local STT (FREE)
-gtts==2.4.0              # Google TTS (FREE)
-pydub==0.25.1            # Audio processing
-soundfile==0.12.1        # Audio I/O
+# openai-whisper==20231117  # Local STT (FREE)
+# gtts==2.4.0              # Google TTS (FREE)
+# pydub==0.25.1            # Audio processing
+# soundfile==0.12.1        # Audio I/O
 
 # AI Agent (FREE options)
 # Option 1: Use Ollama locally (FREE)
@@ -23,8 +23,13 @@ soundfile==0.12.1        # Audio I/O
 requests==2.31.0
 
 # WebRTC (for browser calls - FREE)
-aiortc==1.6.0            # WebRTC for Python
+aiortc>=1.6.0            # WebRTC for Python
 
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.6
+
+
+numpy
+sounddevice
+faster_whisper

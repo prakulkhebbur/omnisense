@@ -49,7 +49,7 @@ class AICallAgent:
         """
         text_lower = text.lower()
         
-        # Extract emergency type
+        # --- 1. Extract Emergency Type ---
         if not call.extracted_info:
             call.extracted_info = ExtractedInfo()
         
@@ -74,8 +74,8 @@ class AICallAgent:
             if "head" in text_lower:
                 call.extracted_info.severity_indicators.append("head_injury")
         
-        # Fire
-        elif any(word in text_lower for word in ["fire", "smoke", "burning", "flames"]):
+        # Fire (Expanded keywords)
+        elif any(word in text_lower for word in ["fire", "smoke", "burning", "flames", "explosion", "gas leak"]):
             call.emergency_type = EmergencyType.FIRE
             call.extracted_info.severity_indicators.append("fire")
         
@@ -87,16 +87,33 @@ class AICallAgent:
         elif any(word in text_lower for word in ["sick", "pain", "hurts", "emergency", "help"]):
             call.emergency_type = EmergencyType.MEDICAL_EMERGENCY
         
-        # Extract location using patterns
-        # Look for address patterns (numbers + street names)
+        # --- 2. Extract Location ---
+        # A. Look for formal addresses (Numbers + Street names)
         address_pattern = r'\d+\s+[A-Za-z\s]+(street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|way|court|ct)'
         address_match = re.search(address_pattern, text, re.IGNORECASE)
+        
+        found_address = None
         if address_match:
+            found_address = address_match.group(0)
+        
+        # B. Fallback: Look for known zones/areas (Crucial for Pattern Detection Demo)
+        if not found_address:
+            # Add any locations you use in your simulation scripts here
+            known_zones = ["newtown", "salt lake", "park street", "sector 5", "lake gardens", "ballygunge"]
+            for zone in known_zones:
+                if zone in text_lower:
+                    found_address = zone.title() # Capitalize it (e.g. "Newtown")
+                    break
+        
+        # Update Call Object if location found
+        if found_address:
             if not call.location:
                 call.location = Location()
-            call.location.address = address_match.group(0)
-        
-        # Extract victim status
+            # Only update if we found something longer/more specific or if currently empty
+            if not call.location.address or len(found_address) > len(call.location.address):
+                call.location.address = found_address
+
+        # --- 3. Extract Victim Status ---
         if "conscious" in text_lower:
             if not call.victim_info:
                 call.victim_info = VictimInfo()
@@ -111,20 +128,13 @@ class AICallAgent:
         """Check if we have enough info to queue the call"""
         has_location = call.location is not None and call.location.address
         has_emergency_type = call.emergency_type != EmergencyType.UNKNOWN
-        has_basic_status = len(call.transcript) >= 4  # At least 2 exchanges
         
-        return has_location and has_emergency_type and has_basic_status
+        # Lower threshold for demo: if we have loc + type, we queue it
+        return has_location and has_emergency_type
     
     async def handle_caller_message(self, call: Call, caller_text: str) -> str:
         """
         Process caller's message and generate AI response
-        
-        Args:
-            call: Current call object
-            caller_text: What the caller said
-            
-        Returns:
-            AI's response text
         """
         # Add caller message to transcript
         call.add_transcript_message("caller", caller_text)

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
 
 from src.core.orchestrator import CallOrchestrator
 from src.api.websocket.manager import ConnectionManager
@@ -51,43 +52,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+orchestrator = CallOrchestrator()
+connection_manager = ConnectionManager()
+
+async def broadcast_state(state: dict):
+    await connection_manager.broadcast_to_dashboards(state)
+
+orchestrator.set_broadcast_function(broadcast_state)
+calls.set_orchestrator(orchestrator)
+operators.set_orchestrator(orchestrator)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 OmniSense API Server Starting...")
+    yield
+    print("🛑 OmniSense API Server Shutting Down...")
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 1. Include Routers
 app.include_router(calls.router)
 app.include_router(operators.router)
 
-# WebSocket endpoints
+# 2. WebSocket Endpoints
 @app.websocket("/ws/dashboard")
 async def websocket_dashboard(websocket: WebSocket):
-    """WebSocket endpoint for dashboard real-time updates"""
     await dashboard_websocket_endpoint(websocket, connection_manager)
 
 @app.websocket("/ws/audio/{call_id}")
 async def websocket_audio(websocket: WebSocket, call_id: str):
-    """WebSocket endpoint for audio streaming"""
     await audio_stream_endpoint(websocket, call_id, connection_manager, orchestrator)
-
-# Health check endpoint
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "OmniSense Emergency Call System",
-        "version": "1.0.0"
-    }
-
-@app.get("/health")
-async def health_check():
-    """Detailed health check"""
-    return {
-        "status": "healthy",
-        "active_calls": len(orchestrator.active_calls),
-        "operators": len(orchestrator.operators),
-        "queue_size": orchestrator.queue_manager.get_queue_size(),
-        "dashboard_connections": len(connection_manager.dashboard_connections)
-    }
 
 @app.get("/api/state")
 async def get_system_state():
-    """Get current system state (for debugging)"""
     return orchestrator.get_state()
+
+# 3. MOUNT STATIC FILES (Serve the Frontend)
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
