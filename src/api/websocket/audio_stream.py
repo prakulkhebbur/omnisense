@@ -1,6 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
-from .manager import ConnectionManager
 from src.core.orchestrator import CallOrchestrator
+from src.api.websocket.manager import ConnectionManager
 from src.stt.stt_whisper import StreamingSTT
 import asyncio
 import re
@@ -11,89 +11,73 @@ async def audio_stream_endpoint(
     manager: ConnectionManager,
     orchestrator: CallOrchestrator
 ):
+    # 1. Connect Victim
     await manager.connect_audio(call_id, websocket)
-    stt = StreamingSTT(model_size="distil-large-v3") 
-    response_task = None
     
-    # Track last message to prevent echoing
-    last_processed_text = ""
+    # 2. Setup AI (Always runs for transcription)
+    stt = StreamingSTT(model_size="distil-large-v3") 
+    
+    # 3. Create Call
+    call = await orchestrator.create_incoming_call(caller_phone=f"User-{call_id[-4:]}")
+    
+    # ID Sync Fix
+    if call.id != call_id:
+        if call.id in orchestrator.active_calls:
+            real_call = orchestrator.active_calls.pop(call.id)
+            real_call.id = call_id
+            orchestrator.active_calls[call_id] = real_call
+            call = real_call
 
-    try:
-        # ID Sync Logic
-        if call_id not in orchestrator.active_calls:
-            print(f"📞 Creating new session for Frontend ID: {call_id}")
-            new_call = await orchestrator.create_incoming_call(caller_phone=f"Web-{call_id[-4:]}")
-            internal_id = new_call.id
-            if internal_id != call_id:
-                if internal_id in orchestrator.active_calls:
-                    call_obj = orchestrator.active_calls.pop(internal_id) 
-                    call_obj.id = call_id
-                    orchestrator.active_calls[call_id] = call_obj
-
+    # Initial AI Greeting (Only if assigned to AI)
+    if call.assigned_to == "AI_AGENT":
         await websocket.send_json({"type": "ai_speech", "text": "911, what is your emergency?"})
 
-        async def process_transcriptions():
-            nonlocal last_processed_text
-            try:
-                async for stt_result in stt.run():
-                    if stt_result is None: continue
+    async def process_transcriptions():
+        """Listen to the call and update dashboard text"""
+        async for stt_result in stt.run():
+            text = stt_result.get("text", "").strip()
+            
+            # Filter noise
+            if not text or not re.search(r'[a-zA-Z]', text): continue
+            
+            # Update Dashboard Transcript
+            # Note: This updates the transcript AND gets an AI response if needed
+            ai_response = await orchestrator.handle_caller_message(call_id, text)
+            
+            # Send Transcript to Victim UI
+            await websocket.send_json({"type": "transcription", "text": text})
 
-                    text = stt_result.get("text", "").strip()
-                    
-                    # --- FIX 1: Aggressive "Real Word" Filter ---
-                    # Must contain at least one alphabetical character (a-z)
-                    # This kills ".", "...", "123", "?", etc.
-                    if not re.search(r'[a-zA-Z]', text):
-                        continue
-                        
-                    # Ignore short 1-letter noise (unless it's "I")
-                    if len(text) < 2 and text.upper() != "I":
-                        continue
-                    # ---------------------------------------------
-                    
-                    # Dedup Logic
-                    if text.lower() == last_processed_text.lower():
-                        continue
-                    last_processed_text = text
+            # If AI replied (because no human is assigned), send TTS
+            if ai_response:
+                await websocket.send_json({"type": "ai_speech", "text": ai_response})
 
-                    print(f"🎤 User ({call_id}): {text}")
-                    
-                    try:
-                        await websocket.send_json({"type": "transcription", "text": text})
+    # Start Transcription Loop
+    asyncio.create_task(process_transcriptions())
 
-                        # Get AI Response
-                        ai_response = await orchestrator.handle_caller_message(call_id, text)
-                        
-                        if ai_response:
-                            print(f"🤖 AI: {ai_response}")
-                            await websocket.send_json({"type": "ai_speech", "text": ai_response})
-                        
-                    except RuntimeError:
-                        break 
-                    except Exception as inner_e:
-                        print(f"❌ Error processing message: {inner_e}")
-                            
-            except Exception as e:
-                print(f"❌ Transcription Loop Failed: {e}")
-
-        response_task = asyncio.create_task(process_transcriptions())
-
+    try:
         while True:
-            try:
-                data = await websocket.receive()
-                if data["type"] == "websocket.disconnect":
-                    break
-                if "bytes" in data:
-                    await stt.push_audio(data["bytes"])
-            except RuntimeError:
+            data = await websocket.receive()
+            
+            if data["type"] == "websocket.disconnect":
+                print(f"Victim {call_id} disconnected.")
                 break
-            except Exception:
-                break
+            
+            if "bytes" in data:
+                audio_bytes = data["bytes"]
+                
+                # A. Send to STT (Always transcribe for records)
+                await stt.push_audio(audio_bytes)
+                
+                # B. Route Audio to Human (if assigned)
+                if call.assigned_to and call.assigned_to != "AI_AGENT":
+                    # ROUTE TO OPERATOR
+                    await orchestrator.route_audio_victim_to_operator(call.id, audio_bytes)
+                else:
+                    # AI Mode (STT loop handles logic above)
+                    pass
 
     except Exception as e:
-        print(f"Stream Error: {e}")
+        print(f"Victim Stream Error: {e}")
     finally:
+        await manager.disconnect_audio(call_id)
         await stt.stop()
-        if response_task:
-            response_task.cancel()
-        manager.disconnect_audio(call_id)

@@ -103,3 +103,23 @@ async def get_system_state():
 
 # 3. MOUNT STATIC FILES (Serve the Frontend)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+@app.websocket("/ws/operator/{operator_id}")
+async def ws_operator(websocket: WebSocket, operator_id: str):
+    await websocket.accept()
+    
+    # Register Op in Orchestrator
+    await orchestrator.register_operator(operator_id, websocket)
+    
+    try:
+        while True:
+            # Receive Audio from Operator's Mic
+            data = await websocket.receive_bytes()
+            
+            # Send to Victim (Relay via Manager)
+            await orchestrator.route_audio_operator_to_victim(operator_id, data, manager)
+            
+    except WebSocketDisconnect:
+        await orchestrator.unregister_operator(operator_id)
+    except Exception as e:
+        print(f"Operator Error: {e}")

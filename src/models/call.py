@@ -23,7 +23,8 @@ class VictimInfo(BaseModel):
     gender: Optional[str] = None
     conscious: Optional[bool] = None
     breathing: Optional[bool] = None
-    medical_conditions: List[str] = []
+    # --- FIX 1: Use default_factory for lists ---
+    medical_conditions: List[str] = Field(default_factory=list)
 
 class TranscriptMessage(BaseModel):
     timestamp: datetime
@@ -34,8 +35,9 @@ class ExtractedInfo(BaseModel):
     emergency_type: Optional[EmergencyType] = None
     location: Optional[Location] = None
     victim_info: Optional[VictimInfo] = None
-    severity_indicators: List[str] = []
-    additional_details: Dict[str, Any] = {}
+    # --- FIX 2: Use default_factory for lists ---
+    severity_indicators: List[str] = Field(default_factory=list)
+    additional_details: Dict[str, Any] = Field(default_factory=dict)
 
 class Call(BaseModel):
     # Core
@@ -56,9 +58,8 @@ class Call(BaseModel):
     location: Optional[Location] = None
     victim_info: Optional[VictimInfo] = None
     
-    # --- NEW: Summary Field for Dashboard ---
+    # Summary Field
     summary: str = "Processing..."
-    # ----------------------------------------
 
     # Status
     status: CallStatus = CallStatus.INCOMING
@@ -69,8 +70,9 @@ class Call(BaseModel):
     severity_level: SeverityLevel = SeverityLevel.MEDIUM
     priority_rank: int = 999
     
-    # Conversation
-    transcript: List[TranscriptMessage] = []
+    # --- FIX 3: CRITICAL - Use default_factory for the transcript ---
+    # This ensures every call gets its own unique list!
+    transcript: List[TranscriptMessage] = Field(default_factory=list)
     extracted_info: Optional[ExtractedInfo] = None
     
     # Resources
@@ -78,8 +80,8 @@ class Call(BaseModel):
     nearest_hospital_distance_km: Optional[float] = None
     
     # Pattern detection
-    related_calls: List[str] = []
-    pattern_flags: List[str] = []
+    related_calls: List[str] = Field(default_factory=list)
+    pattern_flags: List[str] = Field(default_factory=list)
     
     # Operator notes
     operator_notes: Optional[str] = None
