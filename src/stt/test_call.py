@@ -3,7 +3,7 @@ Quick Test Script for Speech-to-Text
 Tests microphone and transcription with a 10-second recording
 """
 
-from speech_to_text import RealtimeSpeechToText
+from stt.speech_to_text import RealtimeSpeechToText
 import time
 
 def quick_test():

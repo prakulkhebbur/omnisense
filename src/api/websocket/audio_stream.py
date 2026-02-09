@@ -1,6 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from .manager import ConnectionManager
 from src.core.orchestrator import CallOrchestrator
+from src.stt_whisper import StreamingSTT
 import asyncio
 import json
 
@@ -12,71 +13,79 @@ async def audio_stream_endpoint(
 ):
     """
     WebSocket endpoint for audio streaming
-    Handles real-time audio from caller and sends AI responses
-    
-    Args:
-        websocket: WebSocket connection
-        call_id: ID of the call
-        manager: Connection manager
-        orchestrator: Call orchestrator
     """
     await manager.connect_audio(call_id, websocket)
     
+    # Initialize Server-Side STT
+    stt = StreamingSTT(model_size="distil-small.en") # Use small/base for faster CPU latency
+    
+    # Task to handle AI responses from STT stream
+    response_task = None
+
     try:
-        # Get the call
-        call = orchestrator.active_calls.get(call_id)
-        if not call:
-            await websocket.close(code=4004, reason="Call not found")
-            return
-        
-        # Send initial AI greeting
-        initial_message = "911, what's your emergency?"
+        # Create/Get call in orchestrator
+        if call_id not in orchestrator.active_calls:
+            # For demo: create implicit incoming call if not exists
+            await orchestrator.create_incoming_call(caller_phone=f"Unknown-{call_id[-4:]}")
+
+        # Send initial greeting
         await websocket.send_json({
             "type": "ai_speech",
-            "text": initial_message
+            "text": "911, what is your emergency?"
         })
-        
-        # Handle incoming messages
-        while True:
-            # Receive message from caller
-            message = await websocket.receive_json()
-            
-            message_type = message.get("type")
-            
-            if message_type == "caller_speech":
-                # Caller spoke - text transcribed by frontend
-                caller_text = message.get("text")
-                
-                if caller_text:
-                    # AI processes and responds
-                    ai_response = await orchestrator.handle_caller_message(
-                        call_id, 
-                        caller_text
-                    )
+
+        # Define the loop that processes transcribed text
+        async def process_transcriptions():
+            async for stt_result in stt.run():
+                text = stt_result.get("text", "")
+                if text:
+                    print(f"User {call_id} said: {text}")
                     
-                    # Send AI response back
+                    # Send Transcription back to UI (so user sees what server heard)
+                    await websocket.send_json({
+                        "type": "transcription",
+                        "text": text
+                    })
+
+                    # Get AI Response
+                    ai_response = await orchestrator.handle_caller_message(call_id, text)
+                    
+                    # Send AI Audio/Text back
                     await websocket.send_json({
                         "type": "ai_speech",
                         "text": ai_response
                     })
-                    
-                    # Check if call should be queued
-                    updated_call = orchestrator.active_calls.get(call_id)
-                    if updated_call and updated_call.status.value == "queued":
-                        # Call moved to queue
+
+                    # Check queue status
+                    call = orchestrator.active_calls.get(call_id)
+                    if call and str(call.status.value) == "queued":
                         await websocket.send_json({
-                            "type": "call_queued",
-                            "message": "Your call has been prioritized. An operator will assist you shortly."
+                            "type": "call_queued", 
+                            "message": "Call prioritized. Waiting for operator."
                         })
-                        break
+
+        # Start the processing task
+        response_task = asyncio.create_task(process_transcriptions())
+
+        # Main Loop: Receive Audio Data
+        while True:
+            # We expect bytes (audio) or text (control messages)
+            data = await websocket.receive()
             
-            elif message_type == "audio_chunk":
-                # Raw audio data (for future STT integration)
-                # For now, we'll handle text-based for simplicity
+            if "bytes" in data:
+                # Raw PCM Audio -> STT
+                await stt.push_audio(data["bytes"])
+            
+            elif "text" in data:
+                # Handle control messages if any
                 pass
-    
+
     except WebSocketDisconnect:
-        manager.disconnect_audio(call_id)
+        print(f"Client {call_id} disconnected")
     except Exception as e:
-        print(f"Audio stream error for call {call_id}: {e}")
+        print(f"Error in audio stream: {e}")
+    finally:
+        await stt.stop()
+        if response_task:
+            response_task.cancel()
         manager.disconnect_audio(call_id)
