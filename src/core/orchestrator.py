@@ -169,7 +169,9 @@ class CallOrchestrator:
             await asyncio.sleep(2)
 
     async def _process_queue_once(self):
-        if not self.call_queue: return
+        if not self.call_queue:
+            await self._broadcast_update()
+            return
         self._sort_queue()
 
         filtered_queue = []
