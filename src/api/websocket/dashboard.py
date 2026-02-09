@@ -18,9 +18,14 @@ async def dashboard_endpoint(
     
     try:
         # 1. Send Initial State immediately upon connection
+        queue_objects = []
+        for cid in orchestrator.call_queue:
+            if cid in orchestrator.active_calls:
+                queue_objects.append(orchestrator.active_calls[cid].dict())
+
         initial_state = {
             "active_calls": [c.dict() for c in orchestrator.active_calls.values()],
-            "queue": orchestrator.call_queue,
+            "queue": queue_objects,
             "operators": {op_id: op['current_call'] for op_id, op in orchestrator.operators.items()},
             "stats": {
                 "total_active": len(orchestrator.active_calls),
