@@ -1,6 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from .manager import ConnectionManager
 from src.core.orchestrator import CallOrchestrator
+from src.models.enums import CallStatus
 from src.stt.stt_whisper import StreamingSTT
 import asyncio
 import re
@@ -61,8 +62,24 @@ async def audio_stream_endpoint(
                     try:
                         await websocket.send_json({"type": "transcription", "text": text})
 
+                        call = orchestrator.active_calls.get(call_id)
+                        previous_status = call.status if call else None
+
                         # Get AI Response
                         ai_response = await orchestrator.handle_caller_message(call_id, text)
+
+                        call = orchestrator.active_calls.get(call_id)
+                        current_status = call.status if call else None
+                        if (
+                            previous_status != CallStatus.QUEUED
+                            and current_status == CallStatus.QUEUED
+                        ):
+                            await websocket.send_json(
+                                {
+                                    "type": "call_queued",
+                                    "message": "You are in the priority queue...",
+                                }
+                            )
                         
                         if ai_response:
                             print(f"🤖 AI: {ai_response}")
