@@ -55,3 +55,21 @@ class ConnectionManager:
                 await websocket.send_bytes(audio_bytes)
             except Exception as e:
                 print(f"Error relaying audio to victim {call_id}: {e}")
+
+    async def send_event_to_victim(self, call_id: str, payload: dict):
+        """Send JSON event to victim if connected."""
+        websocket = self.audio_connections.get(call_id)
+        if websocket:
+            try:
+                await websocket.send_json(payload)
+            except Exception as e:
+                print(f"Error sending event to victim {call_id}: {e}")
+
+    async def close_victim(self, call_id: str):
+        """Close a victim socket if open."""
+        websocket = self.audio_connections.get(call_id)
+        if websocket:
+            try:
+                await websocket.close()
+            except Exception as e:
+                print(f"Error closing victim socket {call_id}: {e}")

@@ -247,7 +247,7 @@ class CallOrchestrator:
         await self._assign_call(call_id, operator_id)
         return True
 
-    async def complete_call(self, operator_id: str):
+    async def complete_call(self, operator_id: str, manager=None):
         op_data = self.operators.get(operator_id)
         if not op_data or not op_data['current_call']: return
 
@@ -262,5 +262,29 @@ class CallOrchestrator:
         op_data['model'].status = OperatorStatus.AVAILABLE
         
         await op_data['ws'].send_json({"type": "call_ended"})
+        if manager:
+            await manager.send_event_to_victim(call_id, {"type": "call_ended"})
+            await manager.close_victim(call_id)
+        await self._process_queue_once()
+        await self._broadcast_update()
+
+    async def handle_caller_disconnect(self, call_id: str):
+        call = self.active_calls.get(call_id)
+        if call:
+            call.status = CallStatus.COMPLETED
+            call.completed_at = datetime.now()
+
+        assigned_op_id = call.assigned_to if call else None
+        if assigned_op_id and assigned_op_id != "AI_AGENT":
+            op_data = self.operators.get(assigned_op_id)
+            if op_data and op_data.get('current_call') == call_id:
+                op_data['current_call'] = None
+                op_data['model'].status = OperatorStatus.AVAILABLE
+                if op_data.get('ws'):
+                    try:
+                        await op_data['ws'].send_json({"type": "call_ended"})
+                    except:
+                        pass
+
         await self._process_queue_once()
         await self._broadcast_update()

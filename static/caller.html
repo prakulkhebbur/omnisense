@@ -40,13 +40,15 @@
         <div style="font-size:1.2rem; font-weight:bold; color:#dc3545;">LIVE CALL</div>
         <div class="status" id="connection-status">Connecting...</div>
         <div id="transcript-box"></div>
-        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#444; border:none; color:white; border-radius:5px;">End Call</button>
+        <button onclick="endCall()" id="end-call-btn" style="margin-top:20px; padding:10px 20px; background:#444; border:none; color:white; border-radius:5px;">End Call</button>
     </div>
 
     <script>
         let ws;
         let audioContext;
         let workletNode;
+        let mediaStream;
+        let callEnded = false;
         
         // --- 1. Audio Processor: Buffers 16k samples (1 second) before sending ---
         const processorCode = `
@@ -107,6 +109,14 @@
                     document.getElementById('connection-status').innerText = "PRIORITY QUEUE";
                     document.getElementById('connection-status').style.color = "#ffc107";
                     speak(data.message);
+                } else if (data.type === 'call_ended') {
+                    setCallEnded("Call ended by operator.");
+                }
+            };
+
+            ws.onclose = () => {
+                if (!callEnded) {
+                    setCallEnded("Call ended.");
                 }
             };
         }
@@ -114,7 +124,7 @@
         async function startAudioStream() {
             try {
                 // Request 16kHz audio specifically
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { 
                         channelCount: 1, 
                         sampleRate: 16000,
@@ -124,7 +134,7 @@
                 });
 
                 audioContext = new AudioContext({ sampleRate: 16000 });
-                const source = audioContext.createMediaStreamSource(stream);
+                const source = audioContext.createMediaStreamSource(mediaStream);
 
                 const blob = new Blob([processorCode], { type: "application/javascript" });
                 const url = URL.createObjectURL(blob);
@@ -145,6 +155,35 @@
             } catch (err) {
                 console.error("Mic Error:", err);
                 alert("Microphone access failed. Check permissions.");
+            }
+        }
+
+        function setCallEnded(message) {
+            callEnded = true;
+            document.getElementById('connection-status').innerText = message;
+            document.getElementById('connection-status').style.color = "#aaa";
+            const endButton = document.getElementById('end-call-btn');
+            endButton.innerText = "Restart";
+            endButton.onclick = () => location.reload();
+            stopAudio();
+        }
+
+        function stopAudio() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (workletNode) {
+                workletNode.disconnect();
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+        function endCall() {
+            setCallEnded("Ending call...");
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
             }
         }
 

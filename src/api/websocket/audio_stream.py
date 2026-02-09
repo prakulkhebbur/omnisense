@@ -99,3 +99,4 @@ async def audio_stream_endpoint(
         # Cleanup
         manager.disconnect_audio(call_id)
         await stt.stop()
+        await orchestrator.handle_caller_disconnect(call_id)
