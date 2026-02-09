@@ -21,10 +21,18 @@ async def audio_stream_endpoint(
     call = await orchestrator.create_incoming_call(caller_phone=f"User-{call_id[-4:]}")
     if call.id != call_id and call.id in orchestrator.active_calls:
         # Sync IDs if orchestrator created a new one
-        real_call = orchestrator.active_calls.pop(call.id)
+        old_call_id = call.id
+        real_call = orchestrator.active_calls.pop(old_call_id)
         real_call.id = call_id
         orchestrator.active_calls[call_id] = real_call
         call = real_call
+        orchestrator.call_queue = [
+            call_id if cid == old_call_id else cid for cid in orchestrator.call_queue
+        ]
+        for op_data in orchestrator.operators.values():
+            if op_data.get("current_call") == old_call_id:
+                op_data["current_call"] = call_id
+        await orchestrator._broadcast_update()
 
     # Initial Greeting
     if call.assigned_to == "AI_AGENT":
