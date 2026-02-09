@@ -6,113 +6,91 @@ import os
 import time
 from datetime import datetime, timezone
 
-# Try importing Groq
+# Global Groq Client
+_GROQ_CLIENT = None
+
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
 except ImportError:
     GROQ_AVAILABLE = False
-    print("❌ Groq library not found. Install with: pip install groq")
+    print("❌ Groq library not found.")
 
 class StreamingSTT:
-    """
-    Async Speech-to-Text using Groq API (Whisper Large V3)
-    """
     def __init__(self, model_size="distil-large-v3", device="cpu", compute_type="int8"):
-        # Note: model_size args are ignored here as we use Groq's API model
-        
+        global _GROQ_CLIENT
         self.api_key = os.getenv("GROQ_API_KEY")
-        if not self.api_key:
-            print("⚠️ WARNING: GROQ_API_KEY not found in environment variables!")
         
-        if GROQ_AVAILABLE:
-            self.client = Groq(api_key=self.api_key)
-            print("🚀 Connected to Groq for Whisper (STT)")
-        
+        if GROQ_AVAILABLE and _GROQ_CLIENT is None:
+            if not self.api_key:
+                print("⚠️ WARNING: GROQ_API_KEY missing!")
+            _GROQ_CLIENT = Groq(api_key=self.api_key)
+            print("🚀 Groq Client Initialized")
+            
+        self.client = _GROQ_CLIENT
         self.queue = asyncio.Queue()
         self.running = True
         self.prev_text = "" 
-        self.last_audio_time = time.time()
 
     async def push_audio(self, audio_bytes):
-        """Receive raw PCM audio bytes (Int16) from WebSocket"""
+        """Receive 1-second Int16 audio chunk from Client"""
         if self.running:
-            # We keep Float32 for Silence Detection calculations
-            audio_data = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-            await self.queue.put(audio_data)
+            # Add to processing queue
+            await self.queue.put(audio_bytes)
 
     async def stop(self):
         self.running = False
         await self.queue.put(None)
 
     async def run(self):
-        """Accumulate audio -> Detect Silence -> Send to Groq"""
-        audio_buffer = []
-        silence_timeout = 0.6  # Send if 0.6s silence detected
-        
+        """Process incoming 1-second chunks"""
         while self.running:
-            try:
-                # Wait for data with timeout (to detect silence)
-                chunk = await asyncio.wait_for(self.queue.get(), timeout=silence_timeout)
-                
-                if chunk is None: break
-                audio_buffer.append(chunk)
-                
-                # If buffer gets too long (~6 seconds), force process to avoid huge lag
-                if len(audio_buffer) >= 24: 
-                    yield await self._transcribe_groq(audio_buffer)
-                    audio_buffer = []
-                    
-            except asyncio.TimeoutError:
-                # Silence Detected: User likely finished a sentence
-                if len(audio_buffer) > 0:
-                    yield await self._transcribe_groq(audio_buffer)
-                    audio_buffer = [] 
-            except Exception as e:
-                print(f"STT Loop Error: {e}")
-                break
+            # Wait for the next 1-second chunk
+            chunk_bytes = await self.queue.get()
+            if chunk_bytes is None: break
+            
+            # Convert to Float32 to check volume/energy
+            audio_data = np.frombuffer(chunk_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            # 1. Volume Check (Lowered threshold to 0.005 to catch whispers)
+            volume = np.abs(audio_data).mean()
+            if volume < 0.005:
+                # Silence - ignore this chunk to save API calls
+                continue
+            
+            # 2. Transcribe this chunk
+            yield await self._transcribe_groq(chunk_bytes)
 
-    async def _transcribe_groq(self, audio_buffer):
-        """Convert buffer to WAV and send to Groq API"""
+    async def _transcribe_groq(self, audio_bytes):
         if not GROQ_AVAILABLE or not self.client:
             return None
 
-        # 1. Prepare Audio Data (Float32 -> Int16)
-        full_audio_float = np.concatenate(audio_buffer)
-        
-        # Simple energy check to ignore pure silence
-        if np.abs(full_audio_float).mean() < 0.01:
-            return None
-
-        # Convert back to Int16 for WAV format
-        full_audio_int16 = (full_audio_float * 32767).astype(np.int16)
-
-        # 2. Write to In-Memory WAV File
+        # Create virtual WAV file
         wav_io = io.BytesIO()
         with wave.open(wav_io, "wb") as wav_file:
             wav_file.setnchannels(1)
-            wav_file.setsampwidth(2) # 2 bytes = 16-bit
+            wav_file.setsampwidth(2) # 16-bit
             wav_file.setframerate(16000)
-            wav_file.writeframes(full_audio_int16.tobytes())
+            wav_file.writeframes(audio_bytes)
         
-        wav_io.seek(0) # Reset pointer to start of file
-        wav_io.name = "audio.wav" # Groq requires a filename
+        wav_io.seek(0)
+        wav_io.name = "audio.wav"
 
-        # 3. Call Groq API (Run in thread to be async-safe)
         try:
+            # Send to Groq
             transcription = await asyncio.to_thread(
                 self.client.audio.transcriptions.create,
                 file=(wav_io.name, wav_io.read()),
-                model="whisper-large-v3", # Powerful model
-                prompt=self.prev_text[-200:], # Give context
+                model="whisper-large-v3",
+                prompt=f"Previous: {self.prev_text[-100:]}", # Context helps accuracy
                 response_format="json",
                 language="en",
                 temperature=0.0
             )
             
             text = transcription.text.strip()
-            
             if text:
+                print(f"🗣️  Heard: {text}")
                 self.prev_text += " " + text
                 return {
                     "text": text,
@@ -120,5 +98,5 @@ class StreamingSTT:
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 }
         except Exception as e:
-            print(f"❌ Groq Whisper Error: {e}")
+            print(f"❌ Groq API Error: {e}")
             return None

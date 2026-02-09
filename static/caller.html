@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -49,21 +48,33 @@
         let audioContext;
         let workletNode;
         
-        // 1. Audio Processor Worklet (Runs in background thread)
-        // Converts Float32 Audio from Mic -> Int16 PCM for Server
+        // --- 1. Audio Processor: Buffers 16k samples (1 second) before sending ---
         const processorCode = `
             class PCMProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.bufferSize = 16000; // Buffer 1 second of audio
+                    this.buffer = new Int16Array(this.bufferSize);
+                    this.bufferIndex = 0;
+                }
+
                 process(inputs, outputs, parameters) {
                     const input = inputs[0];
                     if (input.length > 0) {
-                        const float32Data = input[0];
-                        const int16Data = new Int16Array(float32Data.length);
-                        for (let i = 0; i < float32Data.length; i++) {
-                            // Clamp and convert to 16-bit PCM
-                            const s = Math.max(-1, Math.min(1, float32Data[i]));
-                            int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        const channel0 = input[0];
+                        
+                        for (let i = 0; i < channel0.length; i++) {
+                            // Convert Float32 (-1.0 to 1.0) to Int16
+                            const s = Math.max(-1, Math.min(1, channel0[i]));
+                            this.buffer[this.bufferIndex++] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+
+                            // If buffer full (1 second collected), flush it
+                            if (this.bufferIndex >= this.bufferSize) {
+                                this.port.postMessage(this.buffer);
+                                this.buffer = new Int16Array(this.bufferSize); // Reset
+                                this.bufferIndex = 0;
+                            }
                         }
-                        this.port.postMessage(int16Data.buffer);
                     }
                     return true;
                 }
@@ -75,10 +86,7 @@
             document.getElementById('start-view').style.display = 'none';
             document.getElementById('call-view').style.display = 'flex';
 
-            // Generate Random Call ID
             const callId = "call_" + Math.floor(Math.random() * 10000);
-            
-            // Connect WebSocket
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/audio/${callId}`);
             
@@ -104,33 +112,40 @@
         }
 
         async function startAudioStream() {
-            // Request Mic at 16kHz (Matches server expectation)
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    channelCount: 1, 
-                    sampleRate: 16000 
-                } 
-            });
+            try {
+                // Request 16kHz audio specifically
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        channelCount: 1, 
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
 
-            audioContext = new AudioContext({ sampleRate: 16000 });
-            const source = audioContext.createMediaStreamSource(stream);
+                audioContext = new AudioContext({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(stream);
 
-            // Add Worklet
-            const blob = new Blob([processorCode], { type: "application/javascript" });
-            const url = URL.createObjectURL(blob);
-            await audioContext.audioWorklet.addModule(url);
+                const blob = new Blob([processorCode], { type: "application/javascript" });
+                const url = URL.createObjectURL(blob);
+                await audioContext.audioWorklet.addModule(url);
 
-            workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
-            
-            // Send audio chunks to server
-            workletNode.port.onmessage = (e) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(e.data);
-                }
-            };
+                workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+                
+                workletNode.port.onmessage = (e) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        // Send the 1-second buffer to server
+                        ws.send(e.data); 
+                    }
+                };
 
-            source.connect(workletNode);
-            workletNode.connect(audioContext.destination); // Required to keep processor alive
+                source.connect(workletNode);
+                workletNode.connect(audioContext.destination);
+                
+            } catch (err) {
+                console.error("Mic Error:", err);
+                alert("Microphone access failed. Check permissions.");
+            }
         }
 
         function addMessage(sender, text) {

@@ -56,6 +56,10 @@ class Call(BaseModel):
     location: Optional[Location] = None
     victim_info: Optional[VictimInfo] = None
     
+    # --- NEW: Summary Field for Dashboard ---
+    summary: str = "Processing..."
+    # ----------------------------------------
+
     # Status
     status: CallStatus = CallStatus.INCOMING
     assigned_to: Optional[str] = None
