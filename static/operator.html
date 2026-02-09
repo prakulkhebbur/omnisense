@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OmniSense Operator Console</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        background: #0c1525;
+        color: #e6edf7;
+        font-family: "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+
+      .operator-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+
+      .operator-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .operator-title h1 {
+        margin: 0;
+        font-size: 32px;
+      }
+
+      .operator-title p {
+        margin: 6px 0 0;
+        opacity: 0.7;
+      }
+
+      .operator-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 12px 16px;
+        border-radius: 12px;
+      }
+
+      .operator-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+      }
+
+      .operator-controls input {
+        background: #0f1b2d;
+        color: #e6edf7;
+        border: 1px solid #22324f;
+        border-radius: 6px;
+        padding: 6px 10px;
+      }
+
+      .operator-controls button {
+        background: #2f6fed;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 14px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .status-banner {
+        margin: 16px 0 24px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(45, 102, 237, 0.2);
+        border: 1px solid rgba(45, 102, 237, 0.4);
+      }
+
+      .panel-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+      }
+
+      .panel {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 16px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .panel h2 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+
+      .call-card {
+        background: rgba(12, 21, 37, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .call-card h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .call-meta {
+        font-size: 13px;
+        opacity: 0.7;
+      }
+
+      .call-card button {
+        align-self: flex-start;
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .empty-state {
+        opacity: 0.6;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="operator-container">
+      <header class="operator-header">
+        <div class="operator-title">
+          <h1>Operator Console</h1>
+          <p>Review incoming calls and accept them manually.</p>
+        </div>
+        <div class="operator-controls">
+          <label>
+            Operator ID
+            <input id="operator-id" type="text" value="operator_1" />
+          </label>
+          <button id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <div id="mode-banner" class="status-banner">Loading operator mode…</div>
+      <div id="status-message" class="status-banner" style="display: none;"></div>
+
+      <div class="panel-grid">
+        <section class="panel">
+          <h2>Incoming Calls</h2>
+          <div id="incoming-calls"></div>
+        </section>
+        <section class="panel">
+          <h2>Current Assignment</h2>
+          <div id="current-call"></div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const operatorIdInput = document.getElementById("operator-id");
+      const incomingContainer = document.getElementById("incoming-calls");
+      const currentCallContainer = document.getElementById("current-call");
+      const statusMessage = document.getElementById("status-message");
+      const modeBanner = document.getElementById("mode-banner");
+      const refreshButton = document.getElementById("refresh");
+
+      function showStatus(message, isError = false) {
+        statusMessage.style.display = "block";
+        statusMessage.textContent = message;
+        statusMessage.style.background = isError
+          ? "rgba(220, 38, 38, 0.2)"
+          : "rgba(45, 102, 237, 0.2)";
+        statusMessage.style.borderColor = isError
+          ? "rgba(220, 38, 38, 0.4)"
+          : "rgba(45, 102, 237, 0.4)";
+      }
+
+      function renderIncomingCalls(calls) {
+        incomingContainer.innerHTML = "";
+        if (!calls.length) {
+          incomingContainer.innerHTML =
+            '<p class="empty-state">No incoming calls waiting for pickup.</p>';
+          return;
+        }
+
+        calls.forEach((call) => {
+          const card = document.createElement("div");
+          card.className = "call-card";
+          card.innerHTML = `
+            <h3>Call #${call.call_number}</h3>
+            <div class="call-meta">Caller: ${call.caller?.phone_number || "Unknown"}</div>
+            <div class="call-meta">Status: ${call.status}</div>
+            <div class="call-meta">Received: ${new Date(call.created_at).toLocaleString()}</div>
+            <button type="button" data-call-id="${call.id}">Pick up</button>
+          `;
+          const button = card.querySelector("button");
+          button.addEventListener("click", () => pickUpCall(call.id));
+          incomingContainer.appendChild(card);
+        });
+      }
+
+      function renderCurrentCall(currentCall) {
+        currentCallContainer.innerHTML = "";
+        if (!currentCall) {
+          currentCallContainer.innerHTML =
+            '<p class="empty-state">No active assignment.</p>';
+          return;
+        }
+
+        currentCallContainer.innerHTML = `
+          <div class="call-card">
+            <h3>Call #${currentCall.call_number}</h3>
+            <div class="call-meta">Caller: ${currentCall.caller?.phone_number || "Unknown"}</div>
+            <div class="call-meta">Status: ${currentCall.status}</div>
+            <div class="call-meta">Answered: ${currentCall.answered_at ? new Date(currentCall.answered_at).toLocaleString() : "Pending"}</div>
+          </div>
+        `;
+      }
+
+      async function loadState() {
+        const operatorId = operatorIdInput.value.trim();
+        if (!operatorId) {
+          showStatus("Enter an operator ID to load assignments.", true);
+          return;
+        }
+
+        try {
+          const [stateResponse, currentResponse] = await Promise.all([
+            fetch("/api/state"),
+            fetch(`/api/operators/${operatorId}/current-call`),
+          ]);
+
+          if (!stateResponse.ok) {
+            throw new Error("Failed to load system state.");
+          }
+
+          const state = await stateResponse.json();
+          const currentPayload = currentResponse.ok ? await currentResponse.json() : null;
+          const incoming = (state.active_calls || []).filter(
+            (call) => call.status === "incoming"
+          );
+
+          modeBanner.textContent = state.auto_assign_calls
+            ? "Auto-assign is enabled. Incoming calls will be routed immediately."
+            : "Manual pickup mode is enabled. Incoming calls wait for operator pickup.";
+
+          renderIncomingCalls(incoming);
+          renderCurrentCall(currentPayload?.current_call || null);
+        } catch (error) {
+          showStatus(error.message || "Unable to load calls.", true);
+        }
+      }
+
+      async function pickUpCall(callId) {
+        const operatorId = operatorIdInput.value.trim();
+        if (!operatorId) {
+          showStatus("Enter an operator ID before picking up a call.", true);
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/api/operators/${operatorId}/pick-up/${callId}`,
+            { method: "POST" }
+          );
+
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.detail || "Unable to pick up call.");
+          }
+
+          showStatus(payload.message || "Call picked up.");
+          await loadState();
+        } catch (error) {
+          showStatus(error.message || "Unable to pick up call.", true);
+        }
+      }
+
+      refreshButton.addEventListener("click", loadState);
+      operatorIdInput.addEventListener("change", loadState);
+
+      loadState();
+      setInterval(loadState, 5000);
+    </script>
+  </body>
+</html>

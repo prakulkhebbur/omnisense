@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import Dict, Optional, List
 from datetime import datetime
 
@@ -16,7 +17,7 @@ class CallOrchestrator:
     Routes calls to operators or AI, manages queue, handles state
     """
     
-    def __init__(self):
+    def __init__(self, auto_assign_calls: Optional[bool] = None):
         # Active calls {call_id: Call}
         self.active_calls: Dict[str, Call] = {}
         
@@ -42,6 +43,11 @@ class CallOrchestrator:
         
         # WebSocket broadcast function (set externally)
         self.broadcast_func = None
+
+        if auto_assign_calls is None:
+            auto_assign_calls = os.getenv("OMNISENSE_AUTO_ASSIGN", "false").lower() in {"1", "true", "yes", "on"}
+
+        self.auto_assign_calls = auto_assign_calls
     
     def set_broadcast_function(self, func):
         """Set the WebSocket broadcast function"""
@@ -83,25 +89,31 @@ class CallOrchestrator:
         Args:
             call: Call to route
         """
+        if not self.auto_assign_calls:
+            call.status = CallStatus.INCOMING
+            call.assigned_to = None
+            await self._broadcast_state()
+            return
+
         # Check if operator available
         available_operator = self._get_available_operator()
-        
+
         if available_operator:
             # Route to human operator
             call.status = CallStatus.OPERATOR_HANDLING
             call.assigned_to = available_operator
             call.answered_at = datetime.now()
             self.operators[available_operator] = call.id
-            
+
             await self._broadcast_state()
         else:
             # Route to AI agent
             call.status = CallStatus.AI_HANDLING
             call.assigned_to = "ai_agent"
             call.answered_at = datetime.now()
-            
+
             await self._broadcast_state()
-            
+
             # AI will handle conversation
             # (Actual conversation happens via handle_caller_message)
     
@@ -111,6 +123,39 @@ class CallOrchestrator:
             if current_call is None:
                 return op_id
         return None
+
+    async def operator_pickup_call(self, operator_id: str, call_id: str) -> Call:
+        """
+        Assign an incoming call to an operator who accepts it.
+
+        Args:
+            operator_id: Operator ID accepting the call
+            call_id: Call ID to pick up
+
+        Returns:
+            Updated Call object
+        """
+        if operator_id not in self.operators:
+            raise ValueError("Operator not found")
+
+        if self.operators[operator_id] is not None:
+            raise ValueError("Operator already handling a call")
+
+        call = self.active_calls.get(call_id)
+        if not call:
+            raise ValueError("Call not found")
+
+        if call.status != CallStatus.INCOMING or call.assigned_to is not None:
+            raise ValueError("Call is not available for pickup")
+
+        call.status = CallStatus.OPERATOR_HANDLING
+        call.assigned_to = operator_id
+        call.answered_at = datetime.now()
+        self.operators[operator_id] = call_id
+
+        await self._broadcast_state()
+
+        return call
     
     async def handle_caller_message(self, call_id: str, caller_text: str) -> str:
         """
@@ -170,15 +215,17 @@ class CallOrchestrator:
         # Free operator
         self.operators[operator_id] = None
         
-        # Assign next call from queue
-        next_call_id = self.queue_manager.get_next_call()
-        if next_call_id:
-            self.queue_manager.remove_from_queue(next_call_id)
-            next_call = self.active_calls[next_call_id]
-            
-            next_call.status = CallStatus.OPERATOR_HANDLING
-            next_call.assigned_to = operator_id
-            self.operators[operator_id] = next_call_id
+        # Assign next call from queue when auto-assign is enabled
+        if self.auto_assign_calls:
+            next_call_id = self.queue_manager.get_next_call()
+            if next_call_id:
+                self.queue_manager.remove_from_queue(next_call_id)
+                next_call = self.active_calls[next_call_id]
+
+                next_call.status = CallStatus.OPERATOR_HANDLING
+                next_call.assigned_to = operator_id
+                next_call.answered_at = datetime.now()
+                self.operators[operator_id] = next_call_id
         
         await self._broadcast_state()
     
@@ -215,7 +262,8 @@ class CallOrchestrator:
             "queue": queued,
             "operators": self.operators,
             "stats": stats,
-            "alerts": system_alerts  # NEW: Include alerts in state
+            "alerts": system_alerts,  # NEW: Include alerts in state
+            "auto_assign_calls": self.auto_assign_calls
         }
     
     async def _broadcast_state(self):

@@ -75,3 +75,21 @@ async def get_all_operators():
         })
     
     return {"operators": operators_status}
+
+@router.post("/{operator_id}/pick-up/{call_id}")
+async def pick_up_call(operator_id: str, call_id: str):
+    """Assign an incoming call to an operator who accepts it"""
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Orchestrator not initialized")
+
+    try:
+        call = await orchestrator.operator_pickup_call(operator_id, call_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "operator_id": operator_id,
+        "call_id": call.id,
+        "status": call.status.value,
+        "message": f"Operator {operator_id} picked up call {call.call_number}"
+    }
