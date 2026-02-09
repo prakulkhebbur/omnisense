@@ -50,3 +50,5 @@ torch>=2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu  # CPU version
 
 # Utilities
 tqdm>=4.66.1  # optional, progress bars for long transcriptions
+
+backboard python-dotenv
