@@ -9,31 +9,20 @@ class PriorityRanker:
         self.scorer = SeverityScorer()
     
     def rank_calls(self, calls: List[Call]) -> List[Call]:
-        """
-        Sort calls by severity (highest first)
-        
-        Args:
-            calls: List of Call objects
-            
-        Returns:
-            Sorted list with highest severity first
-        """
+        """Sort calls by severity (highest first)"""
         return sorted(calls, key=lambda c: c.severity_score, reverse=True)
     
     def calculate_and_update_call(self, call: Call) -> Call:
-        """
-        Calculate severity for a call and update its fields
-        
-        Args:
-            call: Call object
-            
-        Returns:
-            Updated call with severity score and level
-        """
-        # Calculate severity score
+        """Calculate severity for a call and update its fields"""
         call.severity_score = self.scorer.calculate_severity(call)
-        
-        # Determine severity level
         call.severity_level = self.scorer.get_severity_level(call.severity_score)
-        
         return call
+
+    def calculate_score(self, call: Call) -> int:
+        """
+        Calculate severity score (0-100).
+        This method is required by the Orchestrator.
+        """
+        # Reuse existing logic
+        self.calculate_and_update_call(call)
+        return call.severity_score

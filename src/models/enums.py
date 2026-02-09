@@ -1,12 +1,11 @@
 from enum import Enum
 
 class CallStatus(str, Enum):
-    INCOMING = "incoming"
-    AI_HANDLING = "ai_handling"
-    OPERATOR_HANDLING = "operator_handling"
-    QUEUED = "queued"
-    COMPLETED = "completed"
-    DROPPED = "dropped"
+    INCOMING = "INCOMING"
+    QUEUED = "QUEUED"
+    IN_PROGRESS = "IN_PROGRESS"  # <--- This was missing!
+    COMPLETED = "COMPLETED"
+    DROPPED = "DROPPED"
 
 class EmergencyType(str, Enum):
     CARDIAC_ARREST = "cardiac_arrest"
