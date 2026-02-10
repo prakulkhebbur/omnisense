@@ -1,0 +1,656 @@
+:root {
+    /* Colors */
+    --bg-dark: #171a31;
+    /* Deep Navy/Black */
+    --card-bg: #1c2340;
+    /* Card background */
+    --header-card-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+
+    /* Departments */
+    --health-color: #2AC9DB;
+    --health-gradient: linear-gradient(135deg, #2AC9DB 0%, #2095A6 100%);
+
+    --fire-color: #EC6F85;
+    --fire-gradient: linear-gradient(135deg, #EC6F85 0%, #E8555B 100%);
+
+    --police-color: #5D5FEF;
+    --police-gradient: linear-gradient(135deg, #5D5FEF 0%, #4B4DCE 100%);
+
+    /* Text */
+    --text-white: #FFFFFF;
+    --text-muted: #8F9BB3;
+    /* Greyish blue */
+    --text-dark: #10121B;
+
+    /* Status */
+    --status-resolved: #AAB8C9;
+    --status-pending: #AAB8C9;
+
+    /* Typography */
+    --font-family: 'Inter', sans-serif;
+
+    /* Spacing & Border Radius */
+    --spacing-md: 20px;
+    --border-radius-card: 16px;
+    --border-radius-pill: 50px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    font-family: var(--font-family);
+    min-height: 100vh;
+    padding: 30px 40px;
+}
+
+/* Header Styles */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 50px;
+}
+
+/* Logo */
+.logo-wrapper {
+    background: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--header-card-shadow);
+    min-width: 220px;
+}
+
+.logo-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #DA2C38;
+}
+
+.logo-icon i {
+    font-size: 28px;
+}
+
+.logo-text {
+    font-weight: 800;
+    font-size: 20px;
+    color: #DA2C38;
+    letter-spacing: -0.5px;
+}
+
+/* Stat Cards */
+.stat-card {
+    border-radius: 12px;
+    padding: 15px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    box-shadow: var(--header-card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card.active-calls {
+    background: var(--health-gradient);
+    color: #10121B;
+    /* Dark text on teal */
+}
+
+.stat-card.pending-calls {
+    background: var(--fire-gradient);
+    color: #fff;
+    /* White text on red/pink */
+}
+
+.stat-label {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.stat-value {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Resources Container */
+.resources-container {
+    background: #25283D;
+    /* Darker navy for resources bg */
+    border-radius: 12px;
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #333855;
+    min-width: 280px;
+    margin-top: -10px;
+    /* Slight offset to align visual centers */
+    box-shadow: var(--header-card-shadow);
+}
+
+.resource-header {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 12px;
+}
+
+.resource-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.resource-item {
+    background: #1B1E32;
+    /* Slightly darker than container */
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.resource-pill {
+    width: 12px;
+    height: 24px;
+    border-radius: 10px;
+}
+
+.resource-pill.police {
+    background: #AAB8C9;
+}
+
+.resource-pill.ambulance {
+    background: var(--health-color);
+}
+
+.resource-pill.fire {
+    background: var(--fire-color);
+}
+
+.resource-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: #D1D5DB;
+}
+
+/* Time Card */
+.time-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: var(--header-card-shadow);
+    min-width: 200px;
+}
+
+.time-display {
+    font-size: 20px;
+    font-weight: 800;
+    color: #10121B;
+}
+
+.date-display {
+    font-size: 14px;
+    font-weight: 700;
+    color: #DA2C38;
+}
+
+
+/* Main Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 40px;
+}
+
+.section-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 60px;
+    color: #fff;
+}
+
+/* Call Cards - Pixel Perfect */
+.incoming-calls-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.calls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    /* Big gap */
+}
+
+.call-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    /* Create the colored left border effect using a pseudo element or border */
+    border-left: 6px solid transparent;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Overriding: All cards have the pinkish left border */
+.call-card {
+    border-left-color: #F06E7F;
+}
+
+
+/* Badge */
+.card-badge {
+    position: absolute;
+    top: -25px;
+    left: -25px;
+    width: 65px;
+    height: 65px;
+    background: #E0E0E0;
+    /* Light grey/white */
+    border-radius: 50%;
+    border-bottom-right-radius: 50%;
+    /* standard circle */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #333;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+/* Department Label */
+.card-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.department-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: capitalize;
+}
+
+.dept-small {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 4px;
+    text-transform: none;
+}
+
+/* Problem Box */
+.problem-box {
+    background: #404660;
+    /* Slightly darker/different tone */
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    position: relative;
+    /* Inner shadow? hard to tell, looks flat */
+}
+
+.problem-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.problem-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.problem-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #DDE2E8;
+}
+
+.problem-icon {
+    font-size: 24px;
+    /* If circles around icons? No, just icon */
+}
+
+.call-card.health .problem-icon {
+    color: var(--health-color);
+}
+
+.call-card.fire .problem-icon {
+    color: var(--fire-color);
+}
+
+.call-card.police .problem-icon {
+    color: #AAB8C9;
+}
+
+
+/* Summary */
+.summary-box {
+    margin-bottom: 25px;
+}
+
+.summary-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.summary-text {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #fff;
+    font-weight: 400;
+}
+
+/* Caller Info */
+.caller-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.caller-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.caller-icon {
+    font-size: 22px;
+    color: #92E3A9;
+    /* Match call button green? Or icon color */
+    /* Icon is a person. Color is Greenish in image #1 and #2. */
+    color: #92E3A9;
+}
+
+.caller-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.caller-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    padding-bottom: 10px;
+}
+
+.caller-location {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.4;
+    max-width: 180px;
+}
+
+.caller-location i {
+    font-size: 12px;
+    color: #92E3A9;
+    /* Location pin green */
+    margin-top: 1px;
+}
+
+/* Action Button */
+.call-action-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #92E3A9;
+    color: #10121B;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Sidebar */
+.live-map-container {
+    margin-bottom: 30px;
+}
+
+.sidebar-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #AAB8C9;
+    /* Muted title color */
+    margin-bottom: 15px;
+}
+
+.map-placeholder {
+    width: 100%;
+    height: 500px;
+    /* Tall map */
+    background: #fff;
+    border-radius: 12px;
+}
+
+
+/* Priority Table */
+.priority-table-container{
+    padding-top:50px;
+    padding-bottom: 40px;
+}
+
+
+.table-wrapper {
+    background: #25283D;
+    border-radius: 12px;
+    overflow: hidden;
+    padding: 0;
+    /* No padding inside wrapper, headers go edge to edge */
+}
+
+.priority-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.priority-table th {
+    background: #2B304A;
+    /* Header row bg */
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    /* Centered headers based on image? Rank is centered. Dept is left? Status is right? */
+    /* Let's center Rank, others maybe left */
+    padding: 15px;
+    text-align: left;
+}
+
+.priority-table th:first-child {
+    text-align: center;
+}
+
+.priority-table th:last-child {
+    text-align: right;
+    padding-right: 25px;
+}
+
+.priority-table td {
+    padding: 15px;
+    background: #21243D;
+    /* Row bg */
+    color: #AAB8C9;
+    /* Default text color */
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #2B304A;
+    /* Separator */
+    text-align: left;
+}
+
+.priority-table td:first-child {
+    text-align: center;
+    color: #AAB8C9;
+}
+
+.priority-table td:last-child {
+    text-align: right;
+    padding-right: 25px;
+    color: #fff;
+    /* "Resolved" looks white/bright in image. "Pending" also white? */
+}
+
+.priority-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Specific text styling for table based on image observation */
+/* Resolved Status (Rows 1 & 2) */
+.priority-table tbody tr:nth-child(1) td:last-child,
+.priority-table tbody tr:nth-child(2) td:last-child {
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Pending Status (Rows 3 & 4) */
+.priority-table tbody tr:nth-child(3) td:last-child,
+.priority-table tbody tr:nth-child(4) td:last-child {
+    color: #AAB8C9;
+    font-weight: 600;
+}
+
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .logo-wrapper,
+    .stat-card,
+    .resources-container,
+    .time-card {
+        width: 100%;
+    }
+}
+
+#icons{
+    font-size:40px;
+}
+
+#loc{
+    font-size: 30px;
+    padding-left: 30px;
+}
+
+#user{
+    font-size: 20px;
+    padding-right: 20px;
+}
+
+
+/* Ensure the parent section can host the background band */
+.dashboard-header {
+    position: relative;
+    z-index: 2;
+}
+
+/* Full-width upper band that spans beyond header content */
+.dashboard-header::before {
+    content: "";
+    position: absolute;
+    top: -40px;          /* pull it upward */
+    left: -40px;         /* extend beyond container */
+    right: -40px;
+    height: 160px;       /* taller so it covers the whole upper area */
+    background: #1C2340;
+    z-index: 0;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Lift header items above band */
+.dashboard-header > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* Push resources card down into darker section */
+.resources-container {
+    margin-top: 1px;   
+    z-index: 2;
+}
+
+.map-placeholder {
+  width: 100%;
+  height: 500px;          /* adjust height as needed */
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0f172a;   /* fallback while map loads */
+}
+
+.call-action-btn.phone.active {
+  transform: scale(1.12);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
+}
+
+.stat-card.active-calls.active {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card.pending-calls.active {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 0 12px #eb697c;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.call-card.active {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#heart{
+    padding-left: 5px;
+    font-size:40px;
+}
+

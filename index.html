@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniSense Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <i id="heart" class="ph-fill ph-heartbeat"></i>
+                </div>
+                <span class="logo-text">Omni-Sense</span>
+            </div>
+
+            <div class="stat-card active-calls">
+                <span class="stat-label">Active Calls</span>
+                <span class="stat-value">24</span>
+            </div>
+
+            <div class="resources-container">
+                <div class="resource-header">Resources Available</div>
+                <div class="resource-list">
+                    <div class="resource-item">
+                        <div class="resource-pill police"></div>
+                        <span class="resource-text">Police Units : 7 available</span>
+                    </div>
+                    <div class="resource-item">
+                        <div class="resource-pill ambulance"></div>
+                        <span class="resource-text">Ambulance : 5 available</span>
+                    </div>
+                    <div class="resource-item">
+                        <div class="resource-pill fire"></div>
+                        <span class="resource-text">Fire Units : 3 available</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card pending-calls">
+                <span class="stat-label">Pending Calls</span>
+                <span class="stat-value">06</span>
+            </div>
+
+            <div class="time-card">
+                <span class="time-display">00:00:00</span>
+                <span class="date-display">00-00-0000</span>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="dashboard-grid">
+            <!-- Incoming Calls Section -->
+            <section class="incoming-calls-section">
+                <h2 class="section-title">Incoming Calls</h2>
+                <div class="calls-grid">
+
+                    <!-- Call Card #1 (Health) -->
+                    <article class="call-card health">
+                        <div class="card-badge">#1</div>
+                        <div class="card-header">
+                            <span class="department-label">Health</span>
+                        </div>
+                        <div class="problem-box">
+                            <span class="problem-label">PROBLEM</span>
+                            <div class="problem-content">
+                                <h3>Cardiac Arrest</h3>
+                                <div class="problem-icon"><i id="icons" class="ph-fill ph-first-aid"></i></div>
+                            </div>
+                        </div>
+                        <div class="summary-box">
+                            <span class="summary-label">SUMMARY</span>
+                            <p class="summary-text">Sudden collapse with loss of consciousness, absent or abnormal
+                                breathing, and no detectable pulse. Skin appears pale or bluish, with cold clammy
+                                texture.</p>
+                        </div>
+                        <div class="caller-info">
+                            <div class="caller-details">
+                                <div class="caller-icon"></i></div>
+                                <div class="caller-text">
+                                    <h4 class="caller-name"><i id="user" class="ph-fill ph-user"></i>RAJESH ARORA</h4>
+                                    <div class="caller-location">
+                                        <i id="loc" class="ph-fill ph-map-pin"></i>
+                                        <span>Canal Road, Malla Gorakhpur, Tikonia, Haldwani</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="call-action-btn phone"><i class="ph-fill ph-phone"></i></button>
+                        </div>
+                    </article>
+
+                    <!-- Call Card #2 (Fire) -->
+                    <article class="call-card fire">
+                        <div class="card-badge">#2</div>
+                        <div class="card-header">
+                            <span class="department-label">Fire</span>
+                        </div>
+                        <div class="problem-box">
+                            <span class="problem-label">PROBLEM</span>
+                            <div class="problem-content">
+                                <h3>House on Fire</h3>
+                                <div class="problem-icon"><i id="icons" class="ph-fill ph-fire"></i></div>
+                            </div>
+                        </div>
+                        <div class="summary-box">
+                            <span class="summary-label">SUMMARY</span>
+                            <p class="summary-text">Active house fire with visible flames and heavy smoke. Occupants
+                                experiencing difficulty breathing, coughing, eye irritation, and panic.</p>
+                        </div>
+                        <div class="caller-info">
+                            <div class="caller-details">
+                                <div class="caller-icon"></i></div>
+                                <div class="caller-text">
+                                    <h4 class="caller-name"><i id="user" class="ph-fill ph-user"></i>EVA MUDGAL</h4>
+                                    <div class="caller-location">
+                                        <i id="loc" class="ph-fill ph-map-pin"></i>
+                                        <span>Krishna Vihar, Laldath Road, Haldwani, Nainital, Uttarakhand</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="call-action-btn phone"><i class="ph-fill ph-phone"></i></button>
+                        </div>
+                    </article>
+
+                    <!-- Call Card #3 (Police) -->
+                    <article class="call-card police">
+                        <div class="card-badge">#3</div>
+                        <div class="card-header">
+                            <span class="department-label">Police</span>
+                        </div>
+                        <div class="problem-box">
+                            <span class="problem-label">PROBLEM</span>
+                            <div class="problem-content">
+                                <h3>Robbery</h3>
+                                <div class="problem-icon"><i id="icons" class="ph-fill ph-police-car"></i></div>
+                            </div>
+                        </div>
+                        <div class="summary-box">
+                            <span class="summary-label">SUMMARY</span>
+                            <p class="summary-text">Recent robbery with signs of acute distress. 
+                                Individual appears shaken and anxious, with rapid breathing, trembling, and elevated heart rate.</p>
+                        </div>
+                        <div class="caller-info">
+                            <div class="caller-details">
+                                <div class="caller-icon"></i></div>
+                                <div class="caller-text">
+                                    <h4 class="caller-name"><i id="user" class="ph-fill ph-user"></i>NIMI SHARMA</h4>
+                                    <div class="caller-location">
+                                        <i id="loc" class="ph-fill ph-map-pin"></i>
+                                        <span>Fountain Street, Gini Avenue, Kaladhungi, Haldwani</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="call-action-btn phone"><i class="ph-fill ph-phone"></i></button>
+                        </div>
+                    </article>
+
+                    <!-- Call Card #4 (Health) -->
+                    <article class="call-card health">
+                        <div class="card-badge">#4</div>
+                        <div class="card-header">
+                            <span class="department-label">Health</span>
+                        </div>
+                        <div class="problem-box">
+                            <span class="problem-label">PROBLEM</span>
+                            <div class="problem-content">
+                                <h3>Foot Injury</h3>
+                                <div class="problem-icon"><i id="icons" class="ph-fill ph-first-aid"></i></div>
+                            </div>
+                        </div>
+                        <div class="summary-box">
+                            <span class="summary-label">SUMMARY</span>
+                            <p class="summary-text">Sudden collapse with loss of consciousness, absent or abnormal breathing, and no detectable pulse. 
+                                Skin appears pale or bluish, with cold clammy texture.</p>
+                        </div>
+                        <div class="caller-info">
+                            <div class="caller-details">
+                                <div class="caller-icon"></i></div>
+                                <div class="caller-text">
+                                    <h4 class="caller-name"><i id="user" class="ph-fill ph-user"></i>ASHISH AHUJA</h4>
+                                    <div class="caller-location">
+                                        <i id="loc" class="ph-fill ph-map-pin"></i>
+                                        <span>Palk Street, New Avenue, Kathgodham, Haldwani, Nainital</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="call-action-btn phone"><i class="ph-fill ph-phone"></i></button>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="live-map-container">
+                    <h3 class="sidebar-title">Live Map</h3>
+                    <div id="live-map" class="map-placeholder"></div>
+
+                </div>
+
+                <div class="priority-table-container">
+                    <h3 class="sidebar-title">Priority Table</h3>
+                    <div class="table-wrapper">
+                        <table class="priority-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Department</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Health</td>
+                                    <td>Resolved</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Fire</td>
+                                    <td>Resolved</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>Police</td>
+                                    <td>Pending</td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>Health</td>
+                                    <td>Pending</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+    <script src="script.js"></script>
+
+</body>
+
+</html>
+
