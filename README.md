@@ -1,6 +1,6 @@
 ```markdown
 # OmniSense 🚑
-
+```
 ### **AI-Powered Emergency Triage & Orchestration Layer**
 
 > *Saving seconds to save lives.*
