@@ -1,6 +1,4 @@
-```markdown
 # OmniSense 🚑
-```
 ### **AI-Powered Emergency Triage & Orchestration Layer**
 
 > *Saving seconds to save lives.*
@@ -73,7 +71,6 @@ omnisense/
 ### Prerequisites
 
 * Python 3.9 or higher
-* *(Optional)* CUDA-enabled GPU for faster local Whisper transcription
 
 ### Installation
 
@@ -176,6 +173,8 @@ python scripts/sim.py
 
 ## 👥 Contributors
 
-* **Prakul Khebbur** - *Lead Developer*
-
-```
+* **Prakul Khebbur**
+* **Vasudev Dinesh**
+* **Mridul Kishanpuria**
+* **Vatsal Narain**
+* **Yashaswi Kandpal**
