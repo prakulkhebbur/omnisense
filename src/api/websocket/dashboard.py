@@ -19,20 +19,32 @@ async def dashboard_endpoint(
     
     try:
         # 1. Send Initial State immediately upon connection
-        queue_objects = []
+        # Build an initial state consistent with orchestrator._broadcast_update
+        active_calls = [c.model_dump(mode='json') for c in orchestrator.active_calls.values() if c.status == c.status.IN_PROGRESS]
+        completed = [c.model_dump(mode='json') for c in orchestrator.active_calls.values() if c.status == c.status.COMPLETED]
+
+        pending = []
         for cid in orchestrator.call_queue:
-            if cid in orchestrator.active_calls:
-                queue_objects.append(orchestrator.active_calls[cid].dict())
+            call = orchestrator.active_calls.get(cid)
+            if call:
+                pending.append(call.model_dump(mode='json'))
+
+        operators_state = {}
+        for op_id, op in orchestrator.operators.items():
+            model = op.get('model') if isinstance(op, dict) else None
+            operators_state[op_id] = {
+                'status': model.status.value if model else 'UNKNOWN',
+                'current_call': op.get('current_call') if isinstance(op, dict) else None
+            }
 
         initial_state = {
-            "active_calls": [c.dict() for c in orchestrator.active_calls.values()],
-            "queue": queue_objects,
-            "operators": {op_id: op['current_call'] for op_id, op in orchestrator.operators.items()},
-            "stats": {
-                "total_active": len(orchestrator.active_calls),
-                "queued": len(orchestrator.call_queue)
-            }
+            "active_calls": active_calls,
+            "completed_calls": completed,
+            "pending_calls": pending,
+            "operators": operators_state,
+            "stats": {"total_active": len(active_calls), "completed": len(completed), "queued": len(pending)}
         }
+
         await websocket.send_json(jsonable_encoder(initial_state))
 
         # 2. Keep connection alive

@@ -28,10 +28,14 @@ ws.onmessage = (event) => {
 function renderDashboard(data) {
     // 1. Update Header Stats
     const activeCount = data.stats?.total_active || 0;
+    const completedCount = data.stats?.completed || 0;
     const queuedCount = data.stats?.queued || 0;
     
     if (document.querySelector('.stat-box.active .stat-number')) {
         document.querySelector('.stat-box.active .stat-number').innerText = activeCount;
+    }
+    if (document.querySelector('.stat-box.completed .stat-number')) {
+        document.querySelector('.stat-box.completed .stat-number').innerText = completedCount;
     }
     if (document.querySelector('.stat-box.pending .stat-number')) {
         document.querySelector('.stat-box.pending .stat-number').innerText = queuedCount;
@@ -42,14 +46,14 @@ function renderDashboard(data) {
     if (cardsContainer) {
         cardsContainer.innerHTML = ''; // Clear existing cards
 
-        // --- FIX: Use active_calls instead of queue, so Human calls show up ---
-        let displayCalls = data.active_calls || [];
-        
-        // Filter out completed calls
-        displayCalls = displayCalls.filter(c => c.status !== 'COMPLETED');
-        
-        // Sort by Severity (Highest First)
-        displayCalls.sort((a, b) => b.severity_score - a.severity_score);
+        // Render active calls first, then show completed calls greyed out
+        const activeCalls = (data.active_calls || []).slice();
+        const completedCalls = (data.completed_calls || []).slice();
+
+        // Sort active by severity (highest first)
+        activeCalls.sort((a, b) => b.severity_score - a.severity_score);
+        // Place completed calls after active (also sort by severity if desired)
+        let displayCalls = activeCalls.concat(completedCalls);
 
         if (displayCalls.length === 0) {
             cardsContainer.innerHTML = '<p style="color:#888; margin-left:10px;">No active calls.</p>';
@@ -69,6 +73,16 @@ function renderDashboard(data) {
                 assignedClass = "badge-human";
             }
 
+            // Completed flag and archived flag
+            const isCompleted = call.status === 'COMPLETED';
+            const isArchived = !!call.archived;
+
+            // If the call was cut/completed but not archived yet, hide who is handling
+            if (isCompleted && !isArchived) {
+                assignedLabel = '';
+                assignedClass = '';
+            }
+
             // Prioritize AI Summary
             let summaryText = "Processing details...";
             if (call.summary && call.summary !== "Processing...") {
@@ -78,15 +92,14 @@ function renderDashboard(data) {
             }
             
             const html = `
-            <div class="card" style="border-left: 5px solid ${severityClass}">
+            <div class="card ${isArchived ? 'completed' : ''}" style="border-left: 5px solid ${severityClass}">
                 <div class="card-header-badges">
                     <div class="badge">#${rank}</div>
-                    <div class="badge ${assignedClass}">${assignedLabel}</div>
+                    ${assignedLabel ? `<div class="badge ${assignedClass}">${assignedLabel}</div>` : ''}
                 </div>
                 
                 <div class="card-top">
-                    <div class="dept-name">${deptName} <span>Department</span></div>
-                    <i class="${iconClass}"></i>
+                    <div class="dept-name"><i class="${iconClass} dept-icon"></i> ${deptName} <span>Department</span></div>
                 </div>
                 <div class="card-inner">
                     <div class="inner-text">
@@ -103,7 +116,7 @@ function renderDashboard(data) {
                             <i class="fas fa-map-marker-alt"></i> ${call.location?.address || "Location Unknown"}
                         </p>
                     </div>
-                    <button class="btn-call"><i class="fas fa-phone-alt rotate"></i></button>
+                    ${isCompleted && !isArchived ? `<button class="btn-end" onclick="endCall('${call.id}')">End Case</button>` : `<button class="btn-call" ${isCompleted ? 'disabled' : ''}><i class="fas fa-phone-alt rotate"></i></button>`}
                 </div>
             </div>
             `;
@@ -111,34 +124,35 @@ function renderDashboard(data) {
         });
     }
 
-    // 3. Render Sidebar (Compact List)
-    const tableContainer = document.querySelector('.table-container');
-    if (tableContainer) {
-        let colPriority = '<div class="col"><h3>PRIORITY</h3>';
-        let colDept = '<div class="col"><h3>DEPARTMENT</h3>';
-        let colStatus = '<div class="col"><h3>STATUS</h3>';
-
-        // Show top 5 active calls in sidebar
-        (data.active_calls || [])
-            .filter(c => c.status !== 'COMPLETED')
-            .sort((a, b) => b.severity_score - a.severity_score)
-            .slice(0, 5)
-            .forEach(call => {
-                colPriority += `<div class="row-item ${call.severity_level}">${call.severity_level.toUpperCase()}</div>`;
-                colDept += `<div class="row-item">${getDeptName(call.emergency_type).toUpperCase()}</div>`;
-                colStatus += `<div class="row-item">${call.status}</div>`;
-            });
-        
-        colPriority += '</div>';
-        colDept += '</div>';
-        colStatus += '</div>';
-
-        tableContainer.innerHTML = `
-            ${colPriority}
-            ${colDept}
-            ${colStatus}
-        `;
+    // 3. Render Sidebar lists
+    // Render pattern alerts into the video placeholder
+    const videoPlaceholder = document.querySelector('.video-placeholder');
+    if (videoPlaceholder) {
+        if (data.patterns && data.patterns.length) {
+            let html = '<h4 class="patterns-title">Detected Patterns</h4><ul class="patterns-list">';
+            html += data.patterns.map(p => `<li class="pattern-item">${p}</li>`).join('');
+            html += '</ul>';
+            videoPlaceholder.innerHTML = html;
+        } else {
+            videoPlaceholder.innerHTML = '<div class="no-patterns">No significant patterns</div>';
+        }
     }
+    const priorityList = document.getElementById('priority-list');
+    const departmentList = document.getElementById('department-list');
+    const statusList = document.getElementById('status-list');
+
+    // Clear lists
+    if (priorityList) priorityList.innerHTML = '';
+    if (departmentList) departmentList.innerHTML = '';
+    if (statusList) statusList.innerHTML = '';
+
+    // Show top 5 active calls in sidebar (exclude archived completed)
+    const sidebarCalls = (data.active_calls || []).filter(c => !c.archived).sort((a, b) => b.severity_score - a.severity_score).slice(0, 5);
+    sidebarCalls.forEach(call => {
+        if (priorityList) priorityList.innerHTML += `<div class="row-item ${call.severity_level}">${call.severity_level.toUpperCase()}</div>`;
+        if (departmentList) departmentList.innerHTML += `<div class="row-item">${getDeptName(call.emergency_type).toUpperCase()}</div>`;
+        if (statusList) statusList.innerHTML += `<div class="row-item">${call.status}</div>`;
+    });
 }
 
 // --- HELPER FUNCTIONS ---
@@ -153,6 +167,7 @@ function getIconClass(type) {
     const t = type.toLowerCase();
     if (t.includes('fire')) return 'fas fa-fire icon-orange';
     if (t.includes('medical') || t.includes('cardiac') || t.includes('injury')) return 'fas fa-plus-circle icon-blue';
+    if (t.includes('rescue') || t.includes('animal')) return 'fas fa-life-ring icon-blue';
     if (t.includes('police') || t.includes('theft') || t.includes('crime')) return 'fas fa-shield-alt icon-black';
     return 'fas fa-exclamation-circle';
 }
@@ -162,6 +177,7 @@ function getDeptName(type) {
     const t = type.toLowerCase();
     if (t.includes('fire')) return 'Fire';
     if (t.includes('medical') || t.includes('cardiac') || t.includes('injury')) return 'Health';
+    if (t.includes('rescue')) return 'Rescue';
     if (t.includes('police') || t.includes('crime')) return 'Police';
     return 'General';
 }
@@ -169,4 +185,12 @@ function getDeptName(type) {
 function formatType(type) {
     if (!type) return 'UNKNOWN';
     return type.replace(/_/g, ' ').toUpperCase();
+}
+
+// End call handler invoked by the dashboard button
+function endCall(callId) {
+    fetch(`/api/calls/${callId}/end`, { method: 'POST' })
+        .then(resp => resp.json())
+        .then(j => console.log('ended', j))
+        .catch(e => console.error('end call failed', e));
 }

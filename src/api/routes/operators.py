@@ -28,10 +28,7 @@ async def complete_call(request: CompleteCallRequest):
         raise HTTPException(status_code=404, detail="Operator not found")
     
     # Complete call and assign next
-    await orchestrator.operator_completes_call(request.operator_id)
-    
-    # Get operator's new call (if any)
-    new_call_id = orchestrator.operators[request.operator_id]
+    new_call_id = await orchestrator.operator_completes_call(request.operator_id)
     
     return {
         "operator_id": request.operator_id,
@@ -47,12 +44,12 @@ async def get_current_call(operator_id: str):
     
     if operator_id not in orchestrator.operators:
         raise HTTPException(status_code=404, detail="Operator not found")
-    
-    call_id = orchestrator.operators[operator_id]
-    
+    op_data = orchestrator.operators[operator_id]
+    call_id = op_data.get('current_call')
+
     if not call_id:
         return {"operator_id": operator_id, "current_call": None}
-    
+
     call = orchestrator.active_calls.get(call_id)
     
     return {
@@ -68,10 +65,15 @@ async def get_all_operators():
     
     operators_status = []
     for op_id, call_id in orchestrator.operators.items():
+        # op_item is a dict with keys: 'model', 'ws', 'current_call'
+        op_item = call_id
+        model = op_item.get('model') if isinstance(op_item, dict) else None
+        current_call = op_item.get('current_call') if isinstance(op_item, dict) else None
+        status = model.status.value if model else ("busy" if current_call else "available")
         operators_status.append({
             "operator_id": op_id,
-            "status": "busy" if call_id else "available",
-            "current_call_id": call_id
+            "status": status,
+            "current_call_id": current_call
         })
     
     return {"operators": operators_status}

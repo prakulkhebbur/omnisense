@@ -78,6 +78,8 @@ class Call(BaseModel):
     # Resources
     nearest_hospital: Optional[str] = None
     nearest_hospital_distance_km: Optional[float] = None
+    # Whether the call has been archived/closed from the dashboard
+    archived: bool = False
     
     # Pattern detection
     related_calls: List[str] = Field(default_factory=list)

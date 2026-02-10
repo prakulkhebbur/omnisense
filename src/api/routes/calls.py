@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from src.core.orchestrator import CallOrchestrator
 from src.models.call import Call
+from src.models.enums import CallStatus
+from src.models.operator import OperatorStatus
 
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
@@ -99,7 +101,47 @@ async def delete_call(call_id: str):
     
     if call_id not in orchestrator.active_calls:
         raise HTTPException(status_code=404, detail="Call not found")
-    
+    # Move call into history (preserve for pattern detection) then remove from active map
+    call = orchestrator.active_calls.get(call_id)
+    try:
+        if call and not any(c.id == call.id for c in orchestrator.call_history):
+            orchestrator.call_history.append(call)
+            if len(orchestrator.call_history) > 500:
+                orchestrator.call_history.pop(0)
+    except Exception:
+        pass
+
     del orchestrator.active_calls[call_id]
-    
-    return {"message": f"Call {call_id} deleted"}
+
+    return {"message": f"Call {call_id} deleted (moved to history)"}
+
+
+@router.post("/{call_id}/end")
+async def end_call(call_id: str):
+    """Mark the call as archived/ended from the dashboard (keeps UI control).
+    This will grey out the call (move to completed_calls).
+    """
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Orchestrator not initialized")
+
+    call = orchestrator.active_calls.get(call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Mark archived and ensure completed status
+    from datetime import datetime
+    call.archived = True
+    call.status = CallStatus.COMPLETED
+    if not call.completed_at:
+        call.completed_at = datetime.now()
+
+    # If an operator was on this call, clear their assignment
+    assigned = call.assigned_to
+    if assigned and assigned != "AI_AGENT":
+        op = orchestrator.operators.get(assigned)
+        if op and op.get('current_call') == call_id:
+            op['current_call'] = None
+            op['model'].status = OperatorStatus.AVAILABLE
+
+    await orchestrator._broadcast_update()
+    return {"message": f"Call {call_id} archived"}

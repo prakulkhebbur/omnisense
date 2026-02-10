@@ -42,11 +42,17 @@ async def broadcast_wrapper(state):
         await manager.broadcast_dashboard_update(state)
 
 orchestrator.set_broadcast_function(broadcast_wrapper)
+orchestrator.set_manager(manager)
 
 # --- LINK ORCHESTRATOR TO ROUTES ---
 # This is crucial so your HTTP endpoints can access the active calls
-from src.api.routes import calls
+from src.api.routes import calls, operators
 calls.orchestrator = orchestrator
+operators.set_orchestrator(orchestrator)
+
+# Register API routers
+app.include_router(calls.router)
+app.include_router(operators.router)
 
 # --- FIX 3: EXPLICIT PAGE ROUTES WITH ABSOLUTE PATHS ---
 @app.get("/")

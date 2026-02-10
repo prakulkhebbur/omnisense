@@ -12,6 +12,7 @@ class EmergencyType(str, Enum):
     STROKE = "stroke"
     SEVERE_TRAUMA = "severe_trauma"
     FIRE = "fire"
+    RESCUE = "rescue"
     MEDICAL_EMERGENCY = "medical_emergency"
     ACCIDENT = "accident"
     MINOR_INJURY = "minor_injury"

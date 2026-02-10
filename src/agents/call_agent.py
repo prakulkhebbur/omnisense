@@ -54,7 +54,64 @@ class AICallAgent:
         call.summary = self._generate_concise_summary(call)
 
         call.add_transcript_message("ai", speech_text)
+
+        # Attempt LLM-based classification of emergency type if model client available
+        try:
+            classified = await self.classify_emergency(call)
+            if classified:
+                call.emergency_type = classified
+                # refresh summary if classification improved
+                call.summary = self._generate_concise_summary(call)
+        except Exception:
+            pass
+
         return speech_text
+
+    async def classify_emergency(self, call: Call):
+        """Ask the LLM to choose the best EmergencyType token for this call.
+        Returns an EmergencyType on success or None on failure.
+        """
+        if not self.client:
+            return None
+
+        # Build options from EmergencyType enum members
+        try:
+            options = ", ".join([k for k in EmergencyType.__members__.keys()])
+        except Exception:
+            options = "CARDIAC_ARREST, STROKE, SEVERE_TRAUMA, FIRE, RESCUE, MEDICAL_EMERGENCY, ACCIDENT, MINOR_INJURY, NON_EMERGENCY, UNKNOWN"
+
+        # Compose prompt with brief context
+        transcript_block = "\n".join([f"{m.role}: {m.text}" for m in call.transcript[-12:]])
+        user_prompt = f"Given the following call transcript and summary, choose the single best emergency type from the list: {options}.\nRespond with exactly one of the tokens (no extra text).\n\nSUMMARY: {call.summary}\nTRANSCRIPT:\n{transcript_block}\n\nEMERGENCY_TYPE:"
+
+        messages = [
+            {"role": "system", "content": "You are a concise classifier that must reply with exactly one token from the provided list."},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        try:
+            resp = await self.client.chat.completions.create(
+                messages=messages,
+                model=self.model,
+                temperature=0.0,
+                max_tokens=6,
+            )
+            text = resp.choices[0].message.content.strip()
+            token = text.split()[0].strip().upper()
+
+            # Map token to EmergencyType if valid
+            if token in EmergencyType.__members__:
+                return EmergencyType[token]
+
+            # Try to match by value name
+            token_low = token.lower()
+            for name, member in EmergencyType.__members__.items():
+                if member.value == token_low or member.value.replace('_', ' ') in token_low:
+                    return EmergencyType[name]
+        except Exception as e:
+            print(f"LLM classification failed: {e}")
+
+        return None
 
     async def _generate_groq_response(self, call: Call) -> str:
         memory_block = f"""
@@ -94,6 +151,8 @@ class AICallAgent:
             return f"Medical emergency reported at {loc}."
         elif call.emergency_type == EmergencyType.FIRE:
             return f"Fire reported at {loc}."
+        elif call.emergency_type == EmergencyType.RESCUE:
+            return f"Rescue needed at {loc}."
         elif call.emergency_type == EmergencyType.CARDIAC_ARREST:
             return f"Critical cardiac event at {loc}."
         
@@ -116,6 +175,9 @@ class AICallAgent:
             call.emergency_type = EmergencyType.CARDIAC_ARREST
         elif "fire" in data_lower or "smoke" in data_lower:
             call.emergency_type = EmergencyType.FIRE
+        elif any(w in data_lower for w in ["rescue", "stuck", "trapped", "stranded", "cat", "dog", "animal", "tree"]):
+            # Animal/rescue scenarios mapped to RESCUE
+            call.emergency_type = EmergencyType.RESCUE
         elif "accident" in data_lower or "crash" in data_lower:
             call.emergency_type = EmergencyType.ACCIDENT
         elif "trauma" in data_lower or "bleeding" in data_lower:
@@ -144,6 +206,9 @@ class AICallAgent:
             call.emergency_type = EmergencyType.CRIME
         elif any(w in text_lower for w in ["broken", "fracture", "bone", "leg", "arm", "ankle", "bleed", "injury", "hurt"]):
             call.emergency_type = EmergencyType.MEDICAL_EMERGENCY
+        elif any(w in text_lower for w in ["cat", "dog", "animal", "stuck", "trapped", "rescue", "tree"]):
+            # Animal rescue and stuck-in-tree scenarios
+            call.emergency_type = EmergencyType.RESCUE
             
         known_zones = ["vit", "vellore", "newtown", "salt lake", "katpadi", "chittoor"]
         for zone in known_zones:

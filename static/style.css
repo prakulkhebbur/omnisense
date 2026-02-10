@@ -157,6 +157,9 @@ body {
 .icon-orange { color: #ff5722; font-size: 24px; }
 .icon-black { color: #000; font-size: 24px; }
 
+/* Department icon inside card header */
+.dept-name .dept-icon { margin-right: 10px; font-size: 22px; vertical-align: middle; }
+
 .card-inner { 
     background: #9ea1a6; 
     border-radius: 15px; 
@@ -189,6 +192,15 @@ body {
     border-radius: 50%; 
     font-size: 20px; 
     cursor: pointer; 
+}
+
+.btn-end {
+    background: #e05a5a;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 /* SIDEBAR STYLES */
@@ -262,3 +274,30 @@ body {
     border-radius: 4px;
     font-size: 0.8rem;
 }
+
+/* Completed calls: visually de-emphasize */
+.card.completed {
+    opacity: 0.55;
+    filter: grayscale(100%);
+    pointer-events: none;
+}
+
+.stat-box.completed {
+    background-color: #8a8f98; /* muted grey */
+}
+
+/* Pattern display in video placeholder */
+.video-placeholder { 
+    background: linear-gradient(180deg,#3a3f5a, #2b3146);
+    color: white;
+    padding: 12px;
+    height: 280px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    overflow: auto;
+}
+.patterns-title { font-size: 14px; margin-bottom: 8px; font-weight: bold; }
+.patterns-list { list-style: none; padding-left: 0; }
+.pattern-item { background: rgba(255,255,255,0.06); padding: 8px; margin-bottom: 8px; border-radius: 6px; font-size: 13px; display:flex; gap:8px; align-items:center; }
+.pattern-item::before { content: "🚨"; margin-right: 6px; }
+.no-patterns { color: #cfcfd3; font-size: 13px; padding: 10px; }
