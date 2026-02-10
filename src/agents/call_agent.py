@@ -19,7 +19,6 @@ class AICallAgent:
         
         if GROQ_AVAILABLE and self.api_key:
             self.client = AsyncGroq(api_key=self.api_key)
-            # Use the latest versatile model supported by Groq
             self.model = "llama-3.3-70b-versatile" 
             print(f"🤖 AI Agent connected to Groq Async ({self.model})")
         else:
@@ -27,10 +26,6 @@ class AICallAgent:
             print("⚠️ Groq Client not initialized (Check Key or Install)")
 
     def has_sufficient_info(self, call: Call) -> bool:
-        """
-        Checks if we have enough info to potentially queue the call
-        or consider the triage phase 'complete'.
-        """
         return (call.emergency_type != EmergencyType.UNKNOWN and 
                 call.location is not None and 
                 call.location.address is not None)
@@ -62,7 +57,6 @@ class AICallAgent:
         return speech_text
 
     async def _generate_groq_response(self, call: Call) -> str:
-        # Inject Memory into System Prompt
         memory_block = f"""
         CURRENT KNOWN STATUS (DO NOT ASK THESE AGAIN):
         - Emergency Type: {call.emergency_type.value if call.emergency_type else "Unknown"}
@@ -74,7 +68,6 @@ class AICallAgent:
         
         messages = [{"role": "system", "content": system_content}]
         
-        # Add last 10 messages for context
         for msg in call.transcript[-10:]:
             role = "user" if msg.role == "caller" else "assistant"
             content = msg.text 
@@ -93,9 +86,18 @@ class AICallAgent:
             return "Help is on the way. Stay on the line."
 
     def _generate_concise_summary(self, call: Call) -> str:
-        """Generates a 1-line summary for the dashboard card."""
-        loc = call.location.address if call.location and call.location.address else "Unknown Loc"
-        emer = call.emergency_type.value if call.emergency_type else "Emergency"
+        """Generates a smart summary for the dashboard card."""
+        loc = call.location.address if call.location and call.location.address else "Locating..."
+        
+        # Use a more descriptive string if we have specific details
+        if call.emergency_type == EmergencyType.MEDICAL_EMERGENCY:
+            return f"Medical emergency reported at {loc}."
+        elif call.emergency_type == EmergencyType.FIRE:
+            return f"Fire reported at {loc}."
+        elif call.emergency_type == EmergencyType.CARDIAC_ARREST:
+            return f"Critical cardiac event at {loc}."
+        
+        emer = call.emergency_type.value.replace("_", " ").title() if call.emergency_type else "Emergency"
         return f"{emer} at {loc}. Active call."
 
     def _parse_llm_output(self, full_text: str):
@@ -108,34 +110,50 @@ class AICallAgent:
 
     def _update_call_from_llm(self, call: Call, data_block: str):
         data_lower = data_block.lower()
+        
+        # --- FIX: Expanded Keyword Mapping ---
         if "cardiac" in data_lower or "arrest" in data_lower:
             call.emergency_type = EmergencyType.CARDIAC_ARREST
-        elif "fire" in data_lower:
+        elif "fire" in data_lower or "smoke" in data_lower:
             call.emergency_type = EmergencyType.FIRE
-        elif "accident" in data_lower or "trauma" in data_lower:
+        elif "accident" in data_lower or "crash" in data_lower:
+            call.emergency_type = EmergencyType.ACCIDENT
+        elif "trauma" in data_lower or "bleeding" in data_lower:
             call.emergency_type = EmergencyType.SEVERE_TRAUMA
-        
+        elif any(w in data_lower for w in ["medical", "injury", "broken", "fracture", "pain", "hurt"]):
+            call.emergency_type = EmergencyType.MEDICAL_EMERGENCY
+            
+        # Extract Location
         loc_match = re.search(r"location:\s*(.+)", data_block, re.IGNORECASE)
         if loc_match:
             address = loc_match.group(1).strip()
-            if address and address.lower() != "unknown":
+            # Don't overwrite a good location with "Unknown"
+            if address and "unknown" not in address.lower():
                 if not call.location: call.location = Location()
                 call.location.address = address
 
     def _extract_info_regex(self, text: str, call: Call):
         text_lower = text.lower()
-        if any(w in text_lower for w in ["fire", "smoke"]):
+        
+        # --- FIX: Expanded Regex Keywords ---
+        if any(w in text_lower for w in ["fire", "smoke", "flame"]):
             call.emergency_type = EmergencyType.FIRE
-        elif any(w in text_lower for w in ["heart", "chest", "pain", "arrest"]):
+        elif any(w in text_lower for w in ["heart", "chest", "arrest", "stroke"]):
             call.emergency_type = EmergencyType.CARDIAC_ARREST
-        elif any(w in text_lower for w in ["gun", "robber", "kill"]):
+        elif any(w in text_lower for w in ["gun", "robber", "kill", "shoot"]):
             call.emergency_type = EmergencyType.CRIME
+        elif any(w in text_lower for w in ["broken", "fracture", "bone", "leg", "arm", "ankle", "bleed", "injury", "hurt"]):
+            call.emergency_type = EmergencyType.MEDICAL_EMERGENCY
             
-        known_zones = ["vit", "vellore", "newtown", "salt lake"]
+        known_zones = ["vit", "vellore", "newtown", "salt lake", "katpadi", "chittoor"]
         for zone in known_zones:
             if zone in text_lower:
                 if not call.location: call.location = Location()
+                # Basic extraction: take the string starting from the zone name
                 try:
-                    call.location.address = text[text_lower.find(zone):].split('.')[0].title()
+                    start_index = text_lower.find(zone)
+                    # Extract up to the next punctuation or end of line
+                    extract = text[start_index:].split('.')[0].strip()
+                    call.location.address = extract.title()
                 except:
                     call.location.address = zone.title()

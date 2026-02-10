@@ -50,38 +50,88 @@
         let mediaStream;
         let callEnded = false;
         
-        // --- 1. Audio Processor: Buffers 16k samples (1 second) before sending ---
+        // --- VAD (Voice Activity Detection) Processor ---
+        // buffers audio and only sends when user stops speaking
         const processorCode = `
-            class PCMProcessor extends AudioWorkletProcessor {
+            class VADProcessor extends AudioWorkletProcessor {
                 constructor() {
                     super();
-                    this.bufferSize = 16000; // Buffer 1 second of audio
-                    this.buffer = new Int16Array(this.bufferSize);
-                    this.bufferIndex = 0;
+                    this.buffer = []; 
+                    this.isSpeaking = false;
+                    this.silenceCounter = 0;
+                    
+                    // Config
+                    this.SAMPLE_RATE = 16000;
+                    this.SILENCE_THRESHOLD = 0.01; // Amplitude threshold
+                    this.SILENCE_DURATION = 0.8 * this.SAMPLE_RATE; // 0.8 seconds of silence to trigger send
+                    this.MAX_DURATION = 5.0 * this.SAMPLE_RATE; // Max 5 seconds before forced send
                 }
 
                 process(inputs, outputs, parameters) {
                     const input = inputs[0];
                     if (input.length > 0) {
                         const channel0 = input[0];
-                        
-                        for (let i = 0; i < channel0.length; i++) {
-                            // Convert Float32 (-1.0 to 1.0) to Int16
-                            const s = Math.max(-1, Math.min(1, channel0[i]));
-                            this.buffer[this.bufferIndex++] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        let sumSquares = 0;
 
-                            // If buffer full (1 second collected), flush it
-                            if (this.bufferIndex >= this.bufferSize) {
-                                this.port.postMessage(this.buffer);
-                                this.buffer = new Int16Array(this.bufferSize); // Reset
-                                this.bufferIndex = 0;
+                        // 1. Convert to Int16 and calculate energy (RMS)
+                        const int16Data = new Int16Array(channel0.length);
+                        for (let i = 0; i < channel0.length; i++) {
+                            const s = Math.max(-1, Math.min(1, channel0[i]));
+                            int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                            sumSquares += s * s;
+                        }
+                        
+                        // 2. Add to buffer
+                        this.buffer.push(int16Data);
+
+                        // 3. VAD Logic
+                        const rms = Math.sqrt(sumSquares / channel0.length);
+                        
+                        if (rms > this.SILENCE_THRESHOLD) {
+                            this.isSpeaking = true;
+                            this.silenceCounter = 0;
+                        } else {
+                            if (this.isSpeaking) {
+                                this.silenceCounter += channel0.length;
                             }
+                        }
+
+                        // 4. Trigger Send?
+                        const totalSamples = this.buffer.length * 128; // approx (128 samples per block)
+                        
+                        // Condition A: Silence detected after speech
+                        const silenceDetected = this.isSpeaking && (this.silenceCounter > this.SILENCE_DURATION);
+                        
+                        // Condition B: Buffer too full (force send)
+                        const forceSend = totalSamples > this.MAX_DURATION;
+
+                        if ((silenceDetected || forceSend) && this.buffer.length > 0) {
+                            this.flush();
                         }
                     }
                     return true;
                 }
+
+                flush() {
+                    // Flatten buffer chunks into one Int16Array
+                    const totalLength = this.buffer.reduce((acc, val) => acc + val.length, 0);
+                    const result = new Int16Array(totalLength);
+                    let offset = 0;
+                    for (const chunk of this.buffer) {
+                        result.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+
+                    // Send to main thread
+                    this.port.postMessage(result);
+                    
+                    // Reset
+                    this.buffer = [];
+                    this.isSpeaking = false;
+                    this.silenceCounter = 0;
+                }
             }
-            registerProcessor('pcm-processor', PCMProcessor);
+            registerProcessor('vad-processor', VADProcessor);
         `;
 
         async function startEmergencyCall() {
@@ -123,13 +173,13 @@
 
         async function startAudioStream() {
             try {
-                // Request 16kHz audio specifically
                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { 
                         channelCount: 1, 
                         sampleRate: 16000,
                         echoCancellation: true,
-                        noiseSuppression: true
+                        noiseSuppression: true,
+                        autoGainControl: true
                     } 
                 });
 
@@ -140,17 +190,16 @@
                 const url = URL.createObjectURL(blob);
                 await audioContext.audioWorklet.addModule(url);
 
-                workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+                workletNode = new AudioWorkletNode(audioContext, 'vad-processor');
                 
                 workletNode.port.onmessage = (e) => {
                     if (ws.readyState === WebSocket.OPEN) {
-                        // Send the 1-second buffer to server
-                        ws.send(e.data); 
+                        ws.send(e.data); // Sends full phrase buffer
                     }
                 };
 
                 source.connect(workletNode);
-                workletNode.connect(audioContext.destination);
+                // NOTE: NOT connecting to destination to prevent echo
                 
             } catch (err) {
                 console.error("Mic Error:", err);

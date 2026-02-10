@@ -240,4 +240,25 @@ body {
   font-size: 25px;
 }
 
+.card-header-badges {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 10px;
+}
 
+.badge-ai {
+    background-color: #007bff; /* Blue */
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.badge-human {
+    background-color: #28a745; /* Green */
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
