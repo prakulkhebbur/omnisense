@@ -173,7 +173,7 @@ python scripts/sim.py
 
 ## 👥 Contributors
 
-* **Prakul Khebbur**
+* **Prakul K Hebbur**
 * **Vasudev Dinesh**
 * **Mridul Kishanpuria**
 * **Vatsal Narain**
