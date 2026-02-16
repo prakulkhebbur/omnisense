@@ -1,75 +1,180 @@
-# OmniSense
+# OmniSense 🚑
+### **AI-Powered Emergency Triage & Orchestration Layer**
 
-> Real-time call analysis, orchestration, and operator dashboard.
+> *Saving seconds to save lives.*
 
-OmniSense is a modular project for processing and managing live call streams, performing speech-to-text, ranking and severity scoring, and providing a web dashboard and API for operators.
+---
 
-## Key Features
-- Real-time audio streaming and transcription (STT)
-- Call orchestration and queue management
-- Pattern detection and severity scoring
-- Web dashboard for operators and callers
+## 📖 Overview
 
-## Requirements
-- Python 3.10+
-- A virtual environment (recommended)
-- Dependencies listed in [requirements.txt](requirements.txt)
+**OmniSense** is a scalable AI-powered layer designed to sit beneath emergency call center operations. During critical surges—such as natural disasters or mass casualty incidents—human operators can become overwhelmed.
 
-## Installation
-1. Create and activate a virtual environment:
+OmniSense solves this by listening to calls in real-time, extracting critical information, and intelligently ranking them. It acts as an automated triage agent that ensures the most severe cases (e.g., cardiac arrests, active fires) are prioritized over less urgent inquiries.
 
-Windows (PowerShell):
-```powershell
-python -m venv .venv
-& .venv\Scripts\Activate.ps1
+### **The Problem**
+* **First-Come-First-Served Bottleneck:** Critical heart attack victims wait behind minor traffic inquiries.
+* **Information Overload:** Operators struggle to correlate data across hundreds of simultaneous calls.
+
+### **The OmniSense Solution**
+* **Real-time Analysis:** Extracts location, emergency type, and victim status on the fly.
+* **Dynamic Prioritization:** Ranks calls by medical urgency (ESI score) and resource proximity.
+* **Pattern Detection:** Identifies widespread events (e.g., "5 calls reporting smoke in Sector 5") to alert operators of mass incidents.
+* **AI Autopilot:** Automatically handles initial triage during overflow, routing only qualified critical cases to humans immediately.
+
+---
+
+## ⚡ Key Features
+
+* **🕵️‍♂️ Intelligent Extraction:** Uses Rule-based NLP (expandable to LLMs) to parse unstructured conversation into structured data (Location, Severity, Victim Status).
+* **📊 Live Triage Dashboard:** Real-time visualization of the priority queue, allowing operators to pick the most critical cases first.
+* **🚨 Mass Event Detection:** Algorithms that cluster calls by location and type to detect expanding crises (e.g., Gas Leaks, Riots).
+* **🗣️ Real-Time STT:** Integrated Speech-to-Text engine supporting **Faster-Whisper**, OpenAI Whisper, and Google Speech.
+* **🔄 Smart Queueing:** A priority queue manager that dynamically re-ranks active calls as new information becomes available.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Backend:** Python 3.10+, FastAPI
+* **Real-Time Comms:** WebSockets (`uvicorn`, `websockets`)
+* **AI & Logic:** Custom `AICallAgent`, Pydantic (Data Validation)
+* **Speech Processing:** Faster-Whisper / OpenAI Whisper / Google Speech Recognition
+* **Frontend:** HTML5, CSS3, Vanilla JavaScript (Streamlined Dashboard)
+* **Simulation:** Python `requests` & `threading` for load testing
+
+---
+
+## 📂 Project Structure
+
+```text
+omnisense/
+├── src/
+│   ├── agents/          # AI Logic for handling calls & extraction
+│   ├── api/             # FastAPI routes & WebSocket handlers
+│   ├── core/            # Central Orchestrator & Queue Manager
+│   ├── models/          # Data structures (Call, EmergencyType, etc.)
+│   ├── ranking/         # Severity scoring & Priority algorithms
+│   ├── services/        # Pattern detection & Speech-to-Text
+│   └── main.py          # Application entry point
+├── frontend/            # Operator Dashboard (HTML/JS/CSS)
+├── scripts/             # Simulation scripts for demos
+├── backboard_implementation/ # Backboard.io integration (Experimental)
+├── master_run.py        # Main launcher script
+└── requirements.txt     # Python dependencies
+
 ```
 
-2. Install dependencies:
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* Python 3.9 or higher
+
+### Installation
+
+1. **Clone the Repository**
+```bash
+git clone [https://github.com/yourusername/omnisense.git](https://github.com/yourusername/omnisense.git)
+cd omnisense
+
+```
+
+
+2. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
+
 ```
 
-## Quickstart (development)
-1. Start the API (example using uvicorn):
+
+3. **Environment Setup**
+Create a `.env` file in the root directory (optional, depending on STT engine choice):
+```ini
+# If using OpenAI services
+OPENAI_API_KEY=your_openai_key_here
+# If using Backboard integration
+BACKBOARD_API_KEY=your_backboard_key_here
+
+```
+
+
+
+---
+
+## 🖥️ Usage
+
+### 1. Start the Server
+
+Launch the FastAPI backend and WebSocket server:
+
 ```bash
-pip install uvicorn
-uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+python master_run.py
+
 ```
 
-2. Open the operator dashboard or static pages in a browser from the `static/` folder (for local testing you can open `static/index.html`). See [static/index.html](static/index.html).
+*The API will be available at `http://localhost:8000*`
 
-3. To run example scripts or integration helpers, check `master_run.py` and the `scripts/` folder.
+### 2. Launch the Dashboard
 
-## Project Structure (high level)
-- `src/api/` — API server and routes ([src/api/main.py](src/api/main.py))
-- `src/core/` — orchestration and queue management ([src/core/orchestrator.py](src/core/orchestrator.py))
-- `src/handlers/` — call handlers and integration logic
-- `src/models/` — domain models (calls, operators, enums)
-- `src/stt/` — speech-to-text implementations ([src/stt/speech_to_text.py](src/stt/speech_to_text.py))
-- `src/services/` — services such as pattern detection
-- `src/ranking/` — ranking and severity scoring logic
-- `static/` — front-end pages and dashboard assets
-- `scripts/` — helper scripts and tests (e.g., `scripts/test_api.py`)
+Open the frontend file in your browser to view the operator console:
 
-## Development
-- Follow the installation steps above.
-- Use `uvicorn` for local API development.
-- Tests and small integration scripts live under `scripts/`.
+* **Option A:** Navigate to `http://localhost:8000/` (Served statically)
+* **Option B:** Open `frontend/index.html` directly in your browser.
 
-## Running Tests
-If you have pytest installed, try:
+### 3. Run a Simulation
+
+To see the system in action without making real calls, run the simulation script. This script mimics a surge of incoming calls, including a "Mass Fire" event and a critical "Cardiac Arrest" case.
+
 ```bash
-pytest -q
-# or run a specific script:
-python scripts/test_api.py
+python scripts/sim.py
+
 ```
 
-## Contributing
-Please open issues or pull requests. Follow standard Python packaging and test practices.
+**Watch the Dashboard:**
 
-## License
-This project does not include a license file by default. Consider adding a license such as MIT if you intend to publish.
+1. Routine calls will appear.
+2. A cluster of fire reports will trigger a **Mass Event Alert**.
+3. A critical cardiac case will jump to the **#1 Priority** spot automatically.
 
-## Contact
-For questions, check the codebase or open an issue in this repository.
-# omnisense
+---
+
+## 🧩 System Architecture
+
+1. **Ingestion:** Calls enter via WebSocket or API. Audio is processed via **Whisper STT** to generate a transcript.
+2. **Analysis (The Brain):** The `AICallAgent` analyzes the text stream for **Severity Indicators** (e.g., "not breathing", "flames").
+3. **Scoring:** The `SeverityScorer` assigns a score (0-100). The `PriorityRanker` sorts the global queue.
+4. **Orchestration:** The `CallOrchestrator` assigns calls to AI or Human Agents based on load and availability.
+5. **Detection:** The `PatternDetector` monitors global state for clusters of similar emergencies.
+
+---
+
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/calls/create` | Simulate an incoming call |
+| `POST` | `/api/calls/{id}/message` | Send caller audio/text to the system |
+| `GET` | `/api/state` | Get full system state (active calls, queue, alerts) |
+| `WS` | `/ws/dashboard` | Real-time WebSocket feed for the dashboard |
+| `WS` | `/ws/audio/{id}` | Real-time audio streaming for calls |
+
+---
+
+## 🔮 Future Roadmap
+
+* [ ] **Voice Biometrics:** Detect caller stress levels via audio frequency analysis.
+* [ ] **Geo-Fencing:** Integration with Google Maps API for real-time ambulance tracking.
+* [ ] **Multi-Language Support:** Real-time translation for non-English speakers.
+* [ ] **SIP Integration:** Direct connection to VoIP telephony systems (Twilio/Asterisk).
+
+---
+
+## 👥 Contributors
+
+* **Prakul K Hebbur**
+* **Vasudev Dinesh**
+* **Mridul Kishanpuria**
+* **Vatsal Narain**
+* **Yashaswi Kandpal**
